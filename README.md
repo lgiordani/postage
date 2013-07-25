@@ -20,7 +20,7 @@ A note about versioning
 This is Postage version 3.0.0, and you will not find here prior versions.
 They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
 
-This library is versioned with a A.B.C schema (**A**PI, **B**OOST, **C**OMPLAINT).
+This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
 * Any change in the COMPLAINT number is a bugfix or even a typo correction; it is transparent to running systems (except that hopefully that nasty bug is no more there).
 * Any change in the BOOST number is an API addition. It is transparent to running systems, but you should check the changelog to check what's new, perhaps that impossible thing is now easy as pie.
