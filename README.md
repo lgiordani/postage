@@ -10,7 +10,7 @@ structures available to the programmer:
 * Generator-based microthreads (microthreads.py)
 * RabbitMQ message producer and consumers (messaging.py)
 
-Microthreads have been implemented here for historical reasons; future plans include a replacement with a more paowerful library.
+Microthreads have been implemented here for historical reasons; future plans include a replacement with a more powerful library.
 This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more.
 You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
 
