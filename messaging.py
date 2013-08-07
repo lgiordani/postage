@@ -27,6 +27,11 @@ try:
 except KeyError:
     global_password = 'guest'
 
+if 'POSTAGE_DEBUG_MODE' in os.environ and os.environ['POSTAGE_DEBUG_MODE'].lower() == 'true':
+    debug_mode = True
+else:
+    debug_mode = False
+
 # Just a simple log to remember the virtual host we are using
 print "postage.messaging: global_vhost set to", global_vhost
 
@@ -315,7 +320,7 @@ class GenericProducer(object):
     
     # After this time the RPC call is considered failed
     rpc_timeout = 30
-    
+
     # The RPC calls is repeated max_retry times
     max_retry = 4
 
@@ -343,8 +348,10 @@ class GenericProducer(object):
         self.fingerprint.update(fingerprint)
         
         self.channel = self.conn_broker.channel()
-#        print "Producer: declaring exchange %s with parameters %s"
-#            %(self.exchange_class, self.exchange.parameters)
+        if debug_mode:
+            print "Producer %s declaring eks %s" \
+                %(self.__class__.__name__, self.eks)
+            print
         for exc, key in self.eks:
             self.channel.exchange_declare(**exc.parameters)
 
@@ -395,9 +402,12 @@ class GenericProducer(object):
         encoded_body = self.encoder.encode(message.body)
 
         for exchange, key in eks:
-#            print "%s: basic_publish() of %s on %s rk %s" \
-#                %(self.__class__.__name__, encoded_body,
-#                exchange.name, key)
+            if debug_mode:
+                print "--> %s: basic_publish() to (%s, %s)"\
+                    %(self.__class__.__name__, exchange, key)
+                for _key, _value in message.body.iteritems():
+                    print "    %s: %s" %(_key, _value)
+                print
             self.channel.basic_publish(body=encoded_body, exchange=exchange.name,
                 properties=msg_props, routing_key=key)
 
@@ -419,6 +429,12 @@ class GenericProducer(object):
             try:
                 # TODO: Message shall be sent again at each loop???
                 msg_props = self._build_rpc_properties()
+                if debug_mode:
+                    print "--> %s: basic_publish() to (%s, %s)"\
+                        %(self.__class__.__name__, exchange, key)
+                    for _key, _value in message.body.iteritems():
+                        print "    %s: %s" %(_key, _value)
+                    print
                 self.channel.basic_publish(body=encoded_body, exchange=exchange.name,
                     properties=msg_props, routing_key=key)
                 
@@ -589,21 +605,7 @@ class GenericConsumer(object):
 
         self.qk_list = []
 
-        for exchange_class, qk_list in self.eqk:
-#            print "Consumer: declaring exchange %s with parameters %s"
-#               %(exchange_class, exchange_class.parameters)
-            self.channel.exchange_declare(**exchange_class.parameters)
-            self.qk_list.extend(qk_list)
-            
-            for queue, key in qk_list:
-                self.channel.queue_declare(queue=queue, auto_delete=True)
-#                print "Binding queue %s with exchange %s with routing key %s"
-#                    %(queue, exchange_class.name, key)
-#                print "%s: queue_bind() %s to %s rk %s"
-#                    %(self.__class__.__name__, queue, exchange_class.name, key)
-
-                self.channel.queue_bind(queue=queue,
-                    exchange=exchange_class.name, routing_key=key)
+        self.add_eqk(self.eqk)
         
         self.channel.basic_qos(prefetch_count=1)
         
@@ -613,31 +615,24 @@ class GenericConsumer(object):
 
     def add_eqk(self, eqk):
         for exchange_class, qk_list in eqk:
-#            print "Consumer: declaring exchange %s with parameters %s"
-#               %(exchange_class, exchange_class.parameters)
-            self.channel.exchange_declare(**exchange_class.parameters)
             self.qk_list.extend(qk_list)
             
             for queue, key in qk_list:
-                self.channel.queue_declare(queue=queue, auto_delete=True)
-#                print "Binding queue %s with exchange %s with routing key %s"
-#                    %(queue, exchange_class.name, key)
-#                print "%s: queue_bind() %s to %s rk %s"
-#                    %(self.__class__.__name__, queue, exchange_class.name, key)
-
-                self.channel.queue_bind(queue=queue,
-                    exchange=exchange_class.name, routing_key=key)
-            
+                self.queue_bind(exchange_class, queue, key)
 
     def queue_bind(self, exchange_class, queue, key):
-#        print "Consumer: declaring exchange %s with parameters %s"
-#           %(exchange_class, exchange_class.parameters)
+        if debug_mode:
+            print "Consumer %s: Declaring exchange %s"\
+                %(self.__class__.__name__, exchange_class)
         self.channel.exchange_declare(**exchange_class.parameters)
+        if debug_mode:
+            print "Consumer %s: Declaring queue %s"\
+                %(self.__class__.__name__, queue)
         self.channel.queue_declare(queue=queue, auto_delete=True)
-#        print "Binding queue %s with exchange %s with routing key %s"
-#            %(queue, exchange_class.name, key)
-#        print "%s: queue_bind() %s to %s rk %s"
-#            %(self.__class__.__name__, queue, exchange_class.name, key)
+        if debug_mode:
+            print "Consumer %s: binding queue %s with exchange %s with routing key %s"\
+                %(self.__class__.__name__, queue,
+                exchange_class, key)
         self.channel.queue_bind(queue=queue, exchange=exchange_class.name,
             routing_key=key)
         self.qk_list.append((queue, key))
@@ -826,7 +821,11 @@ class MessageProcessor(microthreads.MicroThread):
     def _msg_consumer(self, channel, method, header, body):
         decoded_body = self.consumer.decode(body)
 
-#        print "@@@ Message: %s" %(decoded_body)
+        if debug_mode:
+            print "<-- %s: _msg_consumer()" %(self.__class__.__name__)
+            for _key, _value in decoded_body.iteritems():
+                print "    %s: %s" %(_key, _value)
+            print
         try:
             message_category = decoded_body['category']
             message_type = decoded_body['type']
@@ -896,7 +895,5 @@ class MessageProcessor(microthreads.MicroThread):
         self.consumer.stop_consuming()
         
     def step(self):
-        #print "Start consuming"
-        #self.consumer.start_consuming(callback=self._msg_consumer)
         self.start_consuming()
 
