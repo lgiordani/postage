@@ -10,15 +10,16 @@ structures available to the programmer:
 * Generator-based microthreads (microthreads.py)
 * RabbitMQ message producer and consumers (messaging.py)
 
-Microthreads have been implemented here for historical reasons; future plans include a replacement with a more powerful library.
+Microthreads have been implemented here for historical reasons; future plans include a replacement with a more paowerful library.
 This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more.
 You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
 
 A note about versioning
 =======================
 
-This is Postage version 3.0.0, and you will not find here prior versions.
-They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
+This is Postage version 3.0.1.
+
+You will not find here versions prior 3.0.0. They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
 
 This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
@@ -56,6 +57,8 @@ You obviously need to configure RabbitMQ according to your needs, declaring the 
 Setting separate environment enables your components to exchange messages without interfering with the production systems, thus avoiding you to install a separate cluster to test software.
 
 The HUP acronym is used somewhere in the code to mean Host, User, Password, that is the tuple needed to connect to RabbitMQ (plus the virtual host).
+
+A last environment variable, `POSTAGE_DEBUG_MODE`, drives the debug output if set to `true`. It is intended for Postage debugging use only, since its output is pretty verbose.
 
 Fingerprint
 -----------
