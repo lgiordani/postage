@@ -17,7 +17,7 @@ You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/2
 A note about versioning
 =======================
 
-This is Postage version 3.0.2.
+This is Postage version 3.0.3.
 
 You will not find here versions prior 3.0.0. They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
 

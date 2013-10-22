@@ -9,3 +9,8 @@ Change Log
 **Version 3.0.2**
 
 - (C) `_rpc_send()` was incorrectly using `self.eks[0]` instead of `eks[0]`. As a result RPC signals sent with a custom `_key` were not correctly delivered.
+
+**Version 3.0.2**
+
+- (C) `MessageHandlerType` class double declaration has been removed
+
