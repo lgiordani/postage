@@ -422,7 +422,7 @@ class GenericProducer(object):
         message.fingerprint(**self.fingerprint)        
         encoded_body = self.encoder.encode(message.body)
 
-        exchange, key = self.eks[0]
+        exchange, key = eks[0]
 
         _counter = 0
         while True:
