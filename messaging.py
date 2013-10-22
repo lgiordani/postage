@@ -710,31 +710,6 @@ class MessageHandlerFullBody(MessageHandler):
         self.handler_data = ("message", handler_type, message_name, None)
 
 
-class MessageHandlerType(type):
-    """This metaclass is used in conjunction with the MessageHandler decorator.
-    An object with this metaclass has an internal dictionary called _message_handlers
-    that contains all methods which can process an incoming message keyed by message type.
-    The dictionary is filled by the __init__ of the metaclass, looking for the attribute
-    _message_handler attached by the MessageHandler decorator.
-    """
-    def __init__(cls, name, bases, attrs):
-        try:
-            cls._message_handlers
-        except AttributeError:
-            cls._message_handlers = {}
-            
-        for key, method in attrs.iteritems():
-            if hasattr(method, '_message_handler'):
-                message_category, message_type, message_name, body_key = method._message_handler
-
-                message_key = (message_category, message_type, message_name)
-                
-                if message_key not in cls._message_handlers:
-                    cls._message_handlers[message_key] = []
-                    
-                cls._message_handlers[message_key].append((method, body_key))
-
-
 class Handler(object):
     _message_handler = True
     
