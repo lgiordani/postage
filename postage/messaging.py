@@ -8,8 +8,6 @@ import socket
 import time
 import traceback
 
-import highway.core as hwcore
-
 import microthreads
 
 try:
@@ -745,11 +743,6 @@ class MessageHandlerType(type):
                     cls._message_handlers[message_key] = []
                     
                 cls._message_handlers[message_key].append((method, body_key))
-
-
-class MessageProcessorPlugin(hwcore.Plugin):
-    def process_message(self, body, mthread, channel, method, header):
-        pass
 
 
 class MessageProcessor(microthreads.MicroThread):
