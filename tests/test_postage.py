@@ -474,5 +474,22 @@ class TestGenericConsumer(unittest.TestCase):
         
     # TODO: Consider adding some tests... =)
 
+def suite():
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(TestStatus))
+    suite.addTest(loader.loadTestsFromTestCase(TestEncoder))
+    suite.addTest(loader.loadTestsFromTestCase(TestJsonEncoder))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessage))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageCommand))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageRpc))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageResult))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageResultError))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageResultException))
+    suite.addTest(loader.loadTestsFromTestCase(TestExchange))
+    suite.addTest(loader.loadTestsFromTestCase(TestGenericProducer))
+    suite.addTest(loader.loadTestsFromTestCase(TestGenericConsumer))
+    return suite
+
 if __name__ == '__main__':
-	unittest.main()
+    unittest.TextTestRunner().run(suite())
