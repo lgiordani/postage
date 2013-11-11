@@ -18,14 +18,20 @@ except KeyError:
     global_vhost = '/'
     
 try:
-    global_user = os.environ['POSTAGE_RMQ_USER']
+    global_user = os.environ['POSTAGE_USER']
 except KeyError:
-    global_user = 'guest'
+    try:
+        global_user = os.environ['POSTAGE_RMQ_USER']
+    except KeyError:
+        global_user = 'guest'
 
 try:    
-    global_password = os.environ['POSTAGE_RMQ_PASSWORD']
+    global_password = os.environ['POSTAGE_PASSWORD']
 except KeyError:
-    global_password = 'guest'
+    try:    
+        global_password = os.environ['POSTAGE_RMQ_PASSWORD']
+    except KeyError:
+        global_password = 'guest'
 
 if 'POSTAGE_DEBUG_MODE' in os.environ and os.environ['POSTAGE_DEBUG_MODE'].lower() == 'true':
     debug_mode = True
@@ -62,7 +68,7 @@ class Fingerprint(object):
 class Encoder(object):
     """The base message encoder.
     An encoder knows how to encode and decode messages
-    to plain strings which can be sent by RabbitMQ.
+    to plain strings which can be delivered by AMQP.
     """
     
     content_type = ""
@@ -146,7 +152,6 @@ class Message(object):
         if len(kwds) != 0:
             self.body['content']['kwds'] = kwds
         self.body['_reserved'] = {}
-        #body['_reserved']['timestamp'] = str(time.time())
 
     def __unicode__(self):
         return unicode(self.body)
@@ -349,8 +354,8 @@ class GenericProducer(object):
         
         self.channel = self.conn_broker.channel()
         if debug_mode:
-            print "Producer %s declaring eks %s" \
-                %(self.__class__.__name__, self.eks)
+            print("Producer {0} declaring eks {1}".format(
+                    self.__class__.__name__, self.eks))
             print
         for exc, key in self.eks:
             self.channel.exchange_declare(**exc.parameters)
@@ -403,10 +408,12 @@ class GenericProducer(object):
 
         for exchange, key in eks:
             if debug_mode:
-                print "--> %s: basic_publish() to (%s, %s)"\
-                    %(self.__class__.__name__, exchange, key)
+                print("--> {name}: basic_publish() to ({exc}, {key})".format(
+                        name=self.__class__.__name__,
+                        exc=exchange,
+                        key=key))
                 for _key, _value in message.body.iteritems():
-                    print "    %s: %s" %(_key, _value)
+                    print("    {0}: {1}".format(_key, _value))
                 print
             self.channel.basic_publish(body=encoded_body, exchange=exchange.name,
                 properties=msg_props, routing_key=key)
@@ -430,10 +437,12 @@ class GenericProducer(object):
                 # TODO: Message shall be sent again at each loop???
                 msg_props = self._build_rpc_properties()
                 if debug_mode:
-                    print "--> %s: basic_publish() to (%s, %s)"\
-                        %(self.__class__.__name__, exchange, key)
+                    print("--> {name}: basic_publish() to ({exc}, {key})".format(
+                            name=self.__class__.__name__,
+                            exc=exchange,
+                            key=key))
                     for _key, _value in message.body.iteritems():
-                        print "    %s: %s" %(_key, _value)
+                        print("    {0}: {1}".format(_key, _value))
                     print
                 self.channel.basic_publish(body=encoded_body, exchange=exchange.name,
                     properties=msg_props, routing_key=key)
@@ -444,7 +453,6 @@ class GenericProducer(object):
                     results = self.consume_rpc(msg_props.reply_to,
                         timeout=timeout)
                     return results[0]
-                    #.body['content']
             except TimeoutError as exc:
                 if _counter < self.max_retry:
                     _counter = _counter + 1
@@ -452,7 +460,6 @@ class GenericProducer(object):
                 else:
                     return MessageResultException(exc.__class__.__name__,
                         exc.__str__())
-                        #.body
 
     def message(self, *args, **kwds):
         eks = self._get_eks(kwds)
@@ -520,12 +527,9 @@ class GenericProducer(object):
         if timeout is None or timeout < 0:
             timeout = self.rpc_timeout
 
-        #print "Timeout is", timeout
-        
         result_list = []
         
         def _callback(channel, method, header, body):
-            #print "### Got 1/%s RPC result" %(result_len)
             reply = self.encoder.decode(body)
 
             try:
@@ -548,7 +552,6 @@ class GenericProducer(object):
                 callback(reply)
                 
             if len(result_list) == result_len:
-                #print "### All results are here: stopping RPC"
                 channel.stop_consuming()
 
         def _outoftime():
@@ -622,17 +625,21 @@ class GenericConsumer(object):
 
     def queue_bind(self, exchange_class, queue, key):
         if debug_mode:
-            print "Consumer %s: Declaring exchange %s"\
-                %(self.__class__.__name__, exchange_class)
+            print("Consumer {name}: Declaring exchange {e}".format(
+                    name=self.__class__.__name__,
+                    e=exchange_class))
         self.channel.exchange_declare(**exchange_class.parameters)
         if debug_mode:
-            print "Consumer %s: Declaring queue %s"\
-                %(self.__class__.__name__, queue)
+            print("Consumer {name}: Declaring queue {q}".format(
+                    name=self.__class__.__name__,
+                    q=queue))
         self.channel.queue_declare(queue=queue, auto_delete=True)
         if debug_mode:
-            print "Consumer %s: binding queue %s with exchange %s with routing key %s"\
-                %(self.__class__.__name__, queue,
-                exchange_class, key)
+            print("Consumer {name}: binding queue {q} with exchange {e} with routing key {k}".format(
+                    name=self.__class__.__name__,
+                    q=queue,
+                    e=exchange_class,
+                    k=key))
         self.channel.queue_bind(queue=queue, exchange=exchange_class.name,
             routing_key=key)
         self.qk_list.append((queue, key))
@@ -667,7 +674,6 @@ class GenericConsumer(object):
             msg = MessageResult(message)
             encoded_body = self.encoder.encode(msg.body)
             
-        #print "RPC: replying on", header.reply_to
         self.channel.basic_publish(body=encoded_body, exchange="",
             routing_key=header.reply_to)
 
@@ -792,23 +798,18 @@ class MessageProcessor(microthreads.MicroThread):
         decoded_body = self.consumer.decode(body)
 
         if debug_mode:
-            print "<-- %s: _msg_consumer()" %(self.__class__.__name__)
+            print("<-- {0}: _msg_consumer()".format(self.__class__.__name__))
             for _key, _value in decoded_body.iteritems():
-                print "    %s: %s" %(_key, _value)
+                print("    {0}: {1}".format(_key, _value))
             print
         try:
             message_category = decoded_body['category']
             message_type = decoded_body['type']
             if message_category == "message":
-#                if message_type in ['command', 'status', 'logging']:
                 message_name = decoded_body['name']
-#                print "@@@ Message named '%s' of type '%s'" %(message_name,
-#                    message_type)
 
                 handlers = self._message_handlers.get((message_category,
                     message_type, message_name), [])
-
-#                print "@@@ Handlers", handlers
 
                 for callable_obj, body_key in handlers:
                     if body_key is None:
@@ -818,13 +819,9 @@ class MessageProcessor(microthreads.MicroThread):
             elif message_category == 'rpc':
                 if message_type == 'command':
                     message_name = decoded_body['name']
-#                    print "@@@ Rpc named '%s' of type '%s'" %(message_type,
-#                        message_name)
 
                     handlers = self._message_handlers.get((message_category,
                         message_type, message_name), [])
-#                    for key, value in self._message_handlers.iteritems():
-#                        print "%s --> %s" %(key, value)
                         
                     if len(handlers) != 0:
                         callable_obj, body_key = handlers[-1]

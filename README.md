@@ -1,25 +1,36 @@
-Postage - a RabbitMQ-based component Python library
-===================================================
+Postage - a Python library for AMQP-based network components
+============================================================
 
-Postage is a Python library which leverages [pika](https://github.com/pika/pika) and [RabbitMQ](http://www.rabbitmq.com/)
-to simplify building componentized software.
+Postage is a Python library which leverages [pika](https://github.com/pika/pika) and AMQP (through a broker like [RabbitMQ](http://www.rabbitmq.com/)) to simplify building componentized software.
 
-Python programs can be easily converted to stand-alone components which communicate through messages; Postage makes the following
-structures available to the programmer:
+Through **pika** you can add to any Python program the capability of sending and receiving messages using AMQP. For example you can listen or communicate with other programs through a RabbitMQ cluster. In the following documentation, the reference broker is RabbitMQ.
 
-* Generator-based microthreads (microthreads.py)
-* RabbitMQ message producer and consumers (messaging.py)
+Postage is a layer built on pika, and aims to simplify the implementation of the messaging part in you Python programs, hiding (as much as possible) the AMQP details. it provides the following structures and concepts:
 
-Microthreads have been implemented here for historical reasons; future plans include a replacement with a more paowerful library.
-This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more.
-You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
+* **Fingerprint**: an automatic network fingerprint for an application, which contains useful data to uniquely identify your program on the cluster.
+
+* **Message encoding** implemented in a stan-alone class which can easily be replaced by one of your choice. Default encoding is JSON.
+
+* A **message** implementation based on a plain Python dictionary (thus usable even without Postage). Messages can be of three types: **command**, **status** or **result**, representing the actions of asking something (command), communicating something (status) or answering a request (result). Command messages can be fire-and-forget or RPC. Result messages can further transport a success, an error, or a Python exception.
+
+* **Exchanges** can be declared and customized inheriting a default class.
+
+* A generic message **producer** class: it simplifies the definition of a set of messages an exchange accepts, which helps in defining an API of your service.
+
+* A generic message consumer, or **processor**, that implements a powerful handlers mechanism to define which incoming messages a component is interested in and how it shall answer.
+
+Microthreads
+------------
+
+Postage leverages a microthread library to run network components.
+The current implementation is very simple and largely underused, due to the blocking nature of the pika adapter being used. Future plans include a replacement with a more powerful library. This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more. You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
 
 A note about versioning
 =======================
 
 This is Postage version 3.0.3.
 
-You will not find here versions prior 3.0.0. They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
+You will not find versions prior 3.0.0. They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
 
 This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
@@ -37,16 +48,16 @@ This package, Postage, is licensed under the terms of the GNU General Public Lic
 Messaging
 =========
 
-Here you find a description of the messaging part of Postage. Being Postage based on RabbitMQ, this help presumes you are familiar with RabbitMQ structures (exchanges, queues, bindings, virtual hosts, ...) and that you already have a working RabbitMQ system.
+Here you find a description of the messaging part of Postage. Being Postage based on AMQP, this help presumes you are familiar with structures defined by this latter (exchanges, queues, bindings, virtual hosts, ...) and that you already have a working messaging system (for example a RabbitMQ cluster).
 
-In the code and in the following text you will find the two terms "application" and "component" used with the same meaning: a Python executable which communicates with other using RabbitMQ messages through Postage.
+In the code and in the following text you will find the two terms "application" and "component" used with the same meaning: a Python executable which communicates with others using AMQP messages through Postage. Due to the nature of AMQP you can have components written in several languages working together: here we assumer both producers and consumers are written using Postage, but remember that you can make Postage components work with any other, as far as you stick to its representation of messages (more on that later).
 
 Environment variables
 ---------------------
 
-Postage reads three environment variables, `POSTAGE_VHOST`, `POSTAGE_RMQ_USER`, and `POSTAGE_RMQ_PASSWORD`, which contain the RabbitMQ virtual host in use, the user name and the password. The default values for them are `/`, `guest`, `guest`, i.e. the default values you can find in a bare RabbitMQ installation.
+Postage reads three environment variables, `POSTAGE_VHOST`, `POSTAGE_USER`, and `POSTAGE_PASSWORD`, which contain the RabbitMQ virtual host in use, the user name and the password. The default values for them are `/`, `guest`, `guest`, i.e. the default values you can find in a bare RabbitMQ installation. Previous versions used `POSTAGE_RMQ_USER` and `POSTAGE_RMQ_PASSWORD`, which are still supported but deprecated.
 
-Using the environment variables, expecially `POSTAGE_VHOST` you can easily setup production and development environment and to switch you just need to set the variable before executing your Python components
+Using the environment variables, especially `POSTAGE_VHOST`, you can easily setup production and development environment and to switch you just need to set the variable before executing your Python components
 
 ``` sh
 POSTAGE_VHOST=development mycomponent.py
@@ -54,9 +65,7 @@ POSTAGE_VHOST=development mycomponent.py
 
 You obviously need to configure RabbitMQ according to your needs, declaring the virtual hosts you want.
 
-Setting separate environment enables your components to exchange messages without interfering with the production systems, thus avoiding you to install a separate cluster to test software.
-
-The HUP acronym is used somewhere in the code to mean Host, User, Password, that is the tuple needed to connect to RabbitMQ (plus the virtual host).
+Setting up separate environment enables your components to exchange messages without interfering with the production systems, thus avoiding you to install a separate cluster to test software. The HUP acronym is used somewhere in the code to mean Host, User, Password, that is the tuple needed to connect to RabbitMQ plus the virtual host.
 
 A last environment variable, `POSTAGE_DEBUG_MODE`, drives the debug output if set to `true`. It is intended for Postage debugging use only, since its output is pretty verbose.
 
@@ -65,45 +74,46 @@ Fingerprint
 
 When componentized system become large you need a good way to identify your components, so a simple `Fingerprint` object is provided to encompass useful values, which are: **name** (the name of the component or executable), **type** (a rough plain categorization of the component), **pid** (the OS pid of the component executable), **host** (the host the component is running on), **user** (the OS user running the component executable), **vhost** (the RabbitMQ virtual host the component is running on).
 
-This object is mainly used to simplify the use of all those values, and to allow writing compact code. Since Postage messages are dictionaries (see below) the object provides a `as_dict()` method to return its dictionary form, along with a `as_tuple()` method to provide the tuple form.
+This object is mainly used to simplify the management of all those values, and to allow writing compact code. Since Postage messages are dictionaries (see below) the object provides a `as_dict()` method to return its dictionary form, along with a `as_tuple()` method to provide the tuple form.
 
 You can use any class to encompass the values you need to identify your components: Postage ALWAYS uses the dictionary form of fingerprints, so you shall be sure to be able to give a meaningful dictionary representation of your class of choice.
 
-Obviously to uniquely identify a component on a network you need just host and pid values, but a more complete set of values can gratly simplify management.
+Obviously to uniquely identify a component on a network you need just host and pid values, but a more complete set of values can greatly simplify management.
 
-Fingerprint objects can retrieve all values from the OS, needing only the name and type values; if not passed those are `None`.
+Fingerprint objects can automatically retrieve all values from the OS, needing only the name and type values; if not passed those are `None`.
 
 Encoder
 -------
 
-Postage messages are dictionaries serialized in JSON. The `JsonEncoder` object provides the `encode()` and `decode()` methods and the correct type `application/json`. Encoder class can be easly replaced in your components, provided that it sticks to this interface.
+Postage messages are Python dictionaries serialized in JSON.
+The `JsonEncoder` object provides the `encode()` and `decode()` methods and the correct type `application/json`. Encoder class can be easly replaced in your components, provided that it sticks to this interface.
 
 Messages
 --------
 
-As already stated the data Postage sends to RabbitMQ are dictionaries serialized in JSON. To manage the different types of messages, however, appropriate objects have been defined. The base object is `Message`: it has a **type**, a **category**, and a **boolean value**.
+To manage the different types of messages, appropriate objects have been defined. The base object is `Message`: it has a **type**, a **category**, and a **boolean value**.
 
-The type of the message is free, even if some have been already defined in Postage: **command**, **status**, and **result**.
-The category of the message is not free, and must be one of **message** and **rpc** (this nomenclature is somewhat misleading, since RPC are messages just like the standard ones; future plans include a review of it).
+The type of the message is free, even if some have been already defined in Postage: **command**, **status**, and **result**. This categorization allows the consumers to filter incoming messages according to the action they require.
+
+The category of the message is not free, and must be one of **message** and **rpc** (this nomenclature is somewhat misleading, since RPC are messages just like the standard ones; future plans include a review of it). The first type marks fire-and-forget messages, while the second signals RPC ones.
 
 The dictionary form of the message is the following:
 
 ``` python
-
 message = {
-    'type':message_type,
-    'category':message_category,
-    'version':2,
-    'fingerprint':{...},
-    'content':{...},
-    '_reserved`:{...}
+    'type': message_type,
+    'name': message_name,
+    'category': message_category,
+    'version': '2',
+    'fingerprint': {...},
+    'content': {...},
+    '_reserved`: {...}
     }
-
 ```
 
-The `content` key contains the actual data you put in your message.
+The `content` key contains the actual data you put in your message, and its structure is free.
 
-**Command** messages send a command to another component. The command can be a fire-and_forget one or an RPC call, accordingto the message type; the first type is implemented by the `MessageCommand` class, while the second is implemented by `RpcCommand`. Both classes need the name of the command, the application fingerprint, and optionally a dictionary of parameters, which are imposed by the actual command.
+**Command** messages send a command to another component. The command can be a fire-and_forget one or an RPC call, according to the message type; the first type is implemented by the `MessageCommand` class, while the second is implemented by `RpcCommand`. Both classes need the name of the command, the application fingerprint, and optionally a dictionary of parameters, which are imposed by the actual command.
 
 **Status** messages bear the status of an application, which is a simple string, along with the application fingerprint. The class which implements this type is `MessageStatus`.
 
@@ -113,7 +123,7 @@ All three classes contain a **value** and a **message**, but for errors the valu
 Exchange
 --------
 
-The `Exchange` class allows to declare exchanges just by customizing the class parameters. It provides a `parameters` class property that gives a dictionary representation of the exchange itself, as required by the `exchange_declare()` method of the RabbitMQ channel.
+The `Exchange` class allows to declare exchanges just by customizing the class parameters. It provides a `parameters` class property that gives a dictionary representation of the exchange itself, as required by the `exchange_declare()` method of the AMQP channel.
 
 To declare your own exchange you just need to inherit `Exchange`
 

@@ -20,7 +20,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 setup(
     name='postage',
     version='3.0.3',
-    description='a RabbitMQ-based component Python library',
+    description='a Python library for AMQP-based network components',
     long_description=readme + '\n\n' + history,
     author='Leonardo Giordani',
     author_email='giordani.leonardo@gmail.com',

@@ -174,7 +174,7 @@ class TestExchange(unittest.TestCase):
 
 
 class MockChannel(object):
-    # This is a mock of a RabbitMQ channel.
+    # This is a mock of an AMQP channel.
     
     def __init__(self):
         # This stores queues and messages routed to them
