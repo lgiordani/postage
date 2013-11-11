@@ -2,10 +2,10 @@ import unittest
 import mock
 import time
 
-import messaging
+from postage import messaging
 
 test_status_kwds = {'name':'test_name', 'type':'test_type', 'pid':'1234',
-            'host':'test_host', 'user':'test_user', 'vhost':'test_vhost'}
+                    'host':'test_host', 'user':'test_user', 'vhost':'test_vhost'}
 
 class TestStatus(unittest.TestCase):
     def setUp(self):
@@ -483,6 +483,7 @@ def suite():
     suite.addTest(loader.loadTestsFromTestCase(TestMessage))
     suite.addTest(loader.loadTestsFromTestCase(TestMessageCommand))
     suite.addTest(loader.loadTestsFromTestCase(TestMessageRpc))
+    suite.addTest(loader.loadTestsFromTestCase(TestMessageStatus))
     suite.addTest(loader.loadTestsFromTestCase(TestMessageResult))
     suite.addTest(loader.loadTestsFromTestCase(TestMessageResultError))
     suite.addTest(loader.loadTestsFromTestCase(TestMessageResultException))

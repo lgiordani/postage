@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import pika
 import json
@@ -31,7 +33,7 @@ else:
     debug_mode = False
 
 # Just a simple log to remember the virtual host we are using
-print "postage.messaging: global_vhost set to", global_vhost
+print("postage.messaging: global_vhost set to {0}".format(global_vhost))
 
 # This is the default HUP (Host, User, Password)
 global_hup = {'host':'localhost', 'user':global_user, 'password':global_password}
@@ -849,8 +851,8 @@ class MessageProcessor(microthreads.MicroThread):
             self.consumer.ack(method)
             self.restart()
         except Exception as exc:
-            print "Unmanaged exception in", self
-            print exc
+            print("Unmanaged exception in {0}".format(self))
+            print(exc)
             traceback.print_exc()
             self.consumer.reject(method, requeue=False)
             
