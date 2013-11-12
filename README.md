@@ -140,9 +140,70 @@ class MyExchange(messaging.Exchange):
 GenericProducer
 ---------------
 
-The `GenericProducer` class implements an object that can send messages to RabbitMQ.
+When you use AMQP you are free to use any format for your messages and any protocol for sending and receiving data. Postage gives you a predefined, though extensible, message format, the `Message` object. Moreover, through `GenericProducer`, it gives you a way to easily define an API, i.e. a set of shortcut functions that create and send messages, through which you can interact with your system.
 
-Its main feature is to provide "magic" mathods to send messages. The programmer must define a `build_message_NAME()` (or `build_rpc_NAME()`) method which returns a `Message` object (or derived) and the instanced object will provide a `message_NAME()` (or `rpc_NAME()`) method that sends the message to RabbitMQ.
+To better introduce the simplification implemented by `GenericProducer` let us recap what a component shall do to send a message using pika and the `Message` object.
+
+1. a `Message` object has to be declared and filled with the information we want to send, according to a given predefined format (the message API of our system). The message must contain the correct fingerprint and be encoded using the encoder of your choice (choice that must be shared by all other components in the system).
+
+2. A connection to the AMQP broker must be established, then all the target exchanges must be declared.
+
+3. For each exchange you want to receive the message you shall publish it giving the correct routing key for that exchange: the keys you can use are part of your messaging API, so you have to "document" them when you publish the specification for your exchanges.
+
+As you can see this can quickly lead to a bunch o repeated code, as the set of operation you need are opten the same or very similar; moreover, it needs a source of documentation outside the code, that is, the API does not document itself (here I mean: there is no way to get a grasp on the set of messages you are defining in your API).
+
+Let us see how `GenericProducer` solves these issues.
+
+First of all you need to define an exchange:
+
+``` python
+class LoggingExchange(messaging.Exchange):
+    name = logging-exchange"
+    exchange_type = "direct"
+    passive = False
+    durable = True
+    auto_delete = False
+```
+
+Then you need to define a producer, i.e. an object that inherits from `GenericProducer`:
+
+``` python
+class LoggingProducer(messaging.GenericProducer):
+    pass
+```
+
+since the aim of the producer is that of simplify sending messages to an exchange you can here specify a set of exchanges/key couples which will be used by default (more on this later).
+
+``` python
+class LoggingProducer(messaging.GenericProducer):
+    eks = [(LoggingExchange, 'log')]
+```
+
+Now you have to define a function that builds a `Message` containing the data you want to send
+
+``` python
+class LoggingProducer(messaging.GenericProducer):
+    eks = [(LoggingExchange, "log")]
+    
+    def build_message_status_online(self):
+        return messaging.MessageStatus('online')
+```
+
+This is enough to allow you to write the following code
+
+``` python
+producer = LoggingProducer()
+producer.message_status_online()
+```
+
+which will build a `MessageStatus` containing the `'online'` status string and will send it to the exchange named `logging-exchange` with `'log'` as routing key.
+
+
+
+
+
+
+Its main feature is to provide "magic" methods to send messages. The programmer must define a `build_message_NAME()` (or `build_rpc_NAME()`) method which returns a `Message` object (or derived) and the instanced object will provide a `message_NAME()` (or `rpc_NAME()`) method that sends the message to RabbitMQ.
 
 The four class attributes `eks`, `encoder_class`, `routing_key`, and `vhost` are used as defaults when sending messages. Virtual host and HUP can be redefined when deriving the class or when instancing it.
 
