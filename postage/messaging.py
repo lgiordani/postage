@@ -320,7 +320,6 @@ class GenericProducer(object):
     
     eks = [(Exchange, "nokey")]
     encoder_class = JsonEncoder
-    routing_key = "nokey"
     vhost = global_vhost
     
     # After this time the RPC call is considered failed
