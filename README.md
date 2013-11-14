@@ -1,21 +1,21 @@
 Postage - a Python library for AMQP-based network components
 ============================================================
 
-Postage is a Python library which leverages [pika](https://github.com/pika/pika) and AMQP (through a broker like [RabbitMQ](http://www.rabbitmq.com/)) to simplify building componentized software.
+Postage is a Python library which leverages [pika](https://github.com/pika/pika) and AMQP (through a broker like [RabbitMQ](http://www.rabbitmq.com/)) to build network-aware software components.
 
-Through **pika** you can add to any Python program the capability of sending and receiving messages using AMQP. For example you can listen or communicate with other programs through a RabbitMQ cluster. In the following documentation, the reference broker is RabbitMQ.
+Through **pika** you can add to any Python program the capability of sending and receiving messages using AMQP. For example you can listen or communicate with other programs through a RabbitMQ cluster (The reference AMQP broker in this documentation is RabbitMQ).
 
-Postage is a layer built on pika, and aims to simplify the implementation of the messaging part in you Python programs, hiding (as much as possible) the AMQP details. it provides the following structures and concepts:
+Postage is a layer built on pika, and aims to simplify the implementation of the messaging part in your Python programs, hiding (as much as possible) the AMQP details. it provides the following structures and concepts:
 
 * **Fingerprint**: an automatic network fingerprint for an application, which contains useful data to uniquely identify your program on the cluster.
 
-* **Message encoding** implemented in a stan-alone class which can easily be replaced by one of your choice. Default encoding is JSON.
+* **Message encoding** implemented in a stand-alone class which can easily be replaced by one of your choice. Default encoding is JSON.
 
 * A **message** implementation based on a plain Python dictionary (thus usable even without Postage). Messages can be of three types: **command**, **status** or **result**, representing the actions of asking something (command), communicating something (status) or answering a request (result). Command messages can be fire-and-forget or RPC. Result messages can further transport a success, an error, or a Python exception.
 
-* **Exchanges** can be declared and customized inheriting a default class.
+* **Exchanges** can be declared and customized inheriting a dedicated class.
 
-* A generic message **producer** class: it simplifies the definition of a set of messages an exchange accepts, which helps in defining an API of your service.
+* A generic message **producer** class: it simplifies the definition of a set of messages an exchange accepts, which helps in defining a network API of your component.
 
 * A generic message consumer, or **processor**, that implements a powerful handlers mechanism to define which incoming messages a component is interested in and how it shall answer.
 
@@ -72,11 +72,18 @@ A last environment variable, `POSTAGE_DEBUG_MODE`, drives the debug output if se
 Fingerprint
 -----------
 
-When componentized system become large you need a good way to identify your components, so a simple `Fingerprint` object is provided to encompass useful values, which are: **name** (the name of the component or executable), **type** (a rough plain categorization of the component), **pid** (the OS pid of the component executable), **host** (the host the component is running on), **user** (the OS user running the component executable), **vhost** (the RabbitMQ virtual host the component is running on).
+When componentized system become large you need a good way to identify your components, so a simple `Fingerprint` object is provided to encompass useful values, which are:
+
+    * `name`: the name of the component or executable
+    * `type`: a rough plain categorization of the component
+    * `pid`: the OS pid of the component executable
+    * `host`: the host the component is running on
+    * `user`: the OS user running the component executable
+    * `vhost`: the RabbitMQ virtual host the component is running on
 
 This object is mainly used to simplify the management of all those values, and to allow writing compact code. Since Postage messages are dictionaries (see below) the object provides a `as_dict()` method to return its dictionary form, along with a `as_tuple()` method to provide the tuple form.
 
-You can use any class to encompass the values you need to identify your components: Postage ALWAYS uses the dictionary form of fingerprints, so you shall be sure to be able to give a meaningful dictionary representation of your class of choice.
+You can use any class to encompass the values you need to identify your components: Postage ALWAYS uses the dictionary form of fingerprints, so you need a way to give a meaningful dictionary representation of your class of choice.
 
 Obviously to uniquely identify a component on a network you need just host and pid values, but a more complete set of values can greatly simplify management.
 
@@ -107,18 +114,36 @@ message = {
     'version': '2',
     'fingerprint': {...},
     'content': {...},
-    '_reserved`: {...}
+    '_reserved': {...}
     }
 ```
 
 The `content` key contains the actual data you put in your message, and its structure is free.
 
-**Command** messages send a command to another component. The command can be a fire-and_forget one or an RPC call, according to the message type; the first type is implemented by the `MessageCommand` class, while the second is implemented by `RpcCommand`. Both classes need the name of the command, the application fingerprint, and optionally a dictionary of parameters, which are imposed by the actual command.
+**Command** messages send a command to another component. The command can be a fire-and-forget one or an RPC call, according to the message category; the former is implemented by the `MessageCommand` class, while the latter is implemented by `RpcCommand`. Both classes need the name of the command and an optional dictionary of parameters, which are imposed by the actual command. The message fingerprint can be set with its `fingerprint(**kwds)` method.
 
-**Status** messages bear the status of an application, which is a simple string, along with the application fingerprint. The class which implements this type is `MessageStatus`.
+``` python
+    m = messaging.MessageCommand('sum', parameters={a=5, b=6})
+    f = Fingerprint(name='mycomponent')
+    m.fingerprint(f.as_dict())
+```
+
+**Status** messages bear the status of an application, which is a simple string, along with the application fingerprint. The class which implements this type is `MessageStatus`. This object needs only a single parameter, which is the status itself. Not that as long as the status is serializable, it can be of any nature.
+
+``` python
+    m = messaging.MessageStatus('online')
+```
 
 **Result** messages contain the result of an RPC call: three classes have this type, `MessageResult`, `MessageResultError`, `MessageResultException`. The first is the result of a successful call, the second is the result of an error in a call, while the third signals that an exception was raised by the remote component. This error classification has been inspired by Erlang error management, which I find a good solution.
 All three classes contain a **value** and a **message**, but for errors the value is `None` and for exceptions it is the name of the Python exception.
+
+``` python
+    try:
+        result = some_operation()
+        m = messaging.MessageResult(result)
+    except Exception as exc:
+        m = messaging.MessageResultException(exc.__class__.__name__, exc.__str__())
+```
 
 Exchange
 --------
