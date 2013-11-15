@@ -1,5 +1,4 @@
-Postage - a Python library for AMQP-based network components
-============================================================
+# Postage - a Python library for AMQP-based network components
 
 Postage is a Python library which leverages [pika](https://github.com/pika/pika) and AMQP (through a broker like [RabbitMQ](http://www.rabbitmq.com/)) to build network-aware software components.
 
@@ -19,14 +18,12 @@ Postage is a layer built on pika, and aims to simplify the implementation of the
 
 * A generic message consumer, or **processor**, that implements a powerful handlers mechanism to define which incoming messages a component is interested in and how it shall answer.
 
-Microthreads
-------------
+# About microthreads
 
 Postage leverages a microthread library to run network components.
 The current implementation is very simple and largely underused, due to the blocking nature of the pika adapter being used. Future plans include a replacement with a more powerful library. This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more. You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
 
-A note about versioning
-=======================
+# About versioning
 
 This is Postage version 3.0.3.
 
@@ -40,20 +37,17 @@ This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAIN
 
 So beware of the frightening version 4.0.0 that will crash your systems!
 
-License
-=======
+# License
 
-This package, Postage, is licensed under the terms of the GNU General Public License Version 2 or later (the "GPL").
+This package, Postage, a Python library for AMQP-based network components, is licensed under the MPL, and may also be used under the terms of the GNU General Public License Version 2 or later (the "GPL"). For the MPL, please see LICENSE-MPL-Postage. For the GPL 2 please see LICENSE-GPL-2.0.
 
-Messaging
-=========
+# API Documentation
 
 Here you find a description of the messaging part of Postage. Being Postage based on AMQP, this help presumes you are familiar with structures defined by this latter (exchanges, queues, bindings, virtual hosts, ...) and that you already have a working messaging system (for example a RabbitMQ cluster).
 
 In the code and in the following text you will find the two terms "application" and "component" used with the same meaning: a Python executable which communicates with others using AMQP messages through Postage. Due to the nature of AMQP you can have components written in several languages working together: here we assumer both producers and consumers are written using Postage, but remember that you can make Postage components work with any other, as far as you stick to its representation of messages (more on that later).
 
-Environment variables
----------------------
+## Environment variables
 
 Postage reads three environment variables, `POSTAGE_VHOST`, `POSTAGE_USER`, and `POSTAGE_PASSWORD`, which contain the RabbitMQ virtual host in use, the user name and the password. The default values for them are `/`, `guest`, `guest`, i.e. the default values you can find in a bare RabbitMQ installation. Previous versions used `POSTAGE_RMQ_USER` and `POSTAGE_RMQ_PASSWORD`, which are still supported but deprecated.
 
@@ -69,17 +63,16 @@ Setting up separate environment enables your components to exchange messages wit
 
 A last environment variable, `POSTAGE_DEBUG_MODE`, drives the debug output if set to `true`. It is intended for Postage debugging use only, since its output is pretty verbose.
 
-Fingerprint
------------
+## Fingerprint
 
 When componentized system become large you need a good way to identify your components, so a simple `Fingerprint` object is provided to encompass useful values, which are:
 
-    * `name`: the name of the component or executable
-    * `type`: a rough plain categorization of the component
-    * `pid`: the OS pid of the component executable
-    * `host`: the host the component is running on
-    * `user`: the OS user running the component executable
-    * `vhost`: the RabbitMQ virtual host the component is running on
+* `name`: the name of the component or executable
+* `type`: a rough plain categorization of the component
+* `pid`: the OS pid of the component executable
+* `host`: the host the component is running on
+* `user`: the OS user running the component executable
+* `vhost`: the RabbitMQ virtual host the component is running on
 
 This object is mainly used to simplify the management of all those values, and to allow writing compact code. Since Postage messages are dictionaries (see below) the object provides a `as_dict()` method to return its dictionary form, along with a `as_tuple()` method to provide the tuple form.
 
@@ -89,16 +82,19 @@ Obviously to uniquely identify a component on a network you need just host and p
 
 Fingerprint objects can automatically retrieve all values from the OS, needing only the name and type values; if not passed those are `None`.
 
-Encoder
--------
+``` python
+fingerprint = Fingerprint(name="mycomponent")
+print fingerprint.as_dict()
+```
+
+## Encoder
 
 Postage messages are Python dictionaries serialized in JSON.
 The `JsonEncoder` object provides the `encode()` and `decode()` methods and the correct type `application/json`. Encoder class can be easly replaced in your components, provided that it sticks to this interface.
 
-Messages
---------
+## Messages
 
-To manage the different types of messages, appropriate objects have been defined. The base object is `Message`: it has a **type**, a **category**, and a **boolean value**.
+To manage the different types of messages, appropriate objects have been defined. The base object is `Message`: it has a **type**, a **name** and a **category**. It can encompass a **fingerprint** and a **content**, which are both dictionaries.
 
 The type of the message is free, even if some have been already defined in Postage: **command**, **status**, and **result**. This categorization allows the consumers to filter incoming messages according to the action they require.
 
@@ -120,7 +116,7 @@ message = {
 
 The `content` key contains the actual data you put in your message, and its structure is free.
 
-**Command** messages send a command to another component. The command can be a fire-and-forget one or an RPC call, according to the message category; the former is implemented by the `MessageCommand` class, while the latter is implemented by `RpcCommand`. Both classes need the name of the command and an optional dictionary of parameters, which are imposed by the actual command. The message fingerprint can be set with its `fingerprint(**kwds)` method.
+**Command** messages send a command to another component. The command can be a fire-and-forget one or an RPC call, according to the message category; the former is implemented by the `MessageCommand` class, while the latter is implemented by `RpcCommand`. Both classes need the name of the command and an optional dictionary of parameters, which are imposed by the actual command. The message fingerprint can be set with its `fingerprint(**kwds)` method.ы
 
 ``` python
     m = messaging.MessageCommand('sum', parameters={a=5, b=6})
@@ -128,8 +124,8 @@ The `content` key contains the actual data you put in your message, and its stru
     m.fingerprint(f.as_dict())
 ```
 
-**Status** messages bear the status of an application, which is a simple string, along with the application fingerprint. The class which implements this type is `MessageStatus`. This object needs only a single parameter, which is the status itself. Not that as long as the status is serializable, it can be of any nature.
-
+**Status** messages bear the status of an application, along with the application fingerprint. The class which implements this type is `MessageStatus`. This object needs only a single parameter, which is the status itself. Not that as long as the status is serializable, it can be of any nature.
+ы
 ``` python
     m = messaging.MessageStatus('online')
 ```
@@ -145,8 +141,7 @@ All three classes contain a **value** and a **message**, but for errors the valu
         m = messaging.MessageResultException(exc.__class__.__name__, exc.__str__())
 ```
 
-Exchange
---------
+## Exchange
 
 The `Exchange` class allows to declare exchanges just by customizing the class parameters. It provides a `parameters` class property that gives a dictionary representation of the exchange itself, as required by the `exchange_declare()` method of the AMQP channel.
 
@@ -162,8 +157,7 @@ class MyExchange(messaging.Exchange):
     auto_delete = False
 ```
 
-GenericProducer
----------------
+## GenericProducer
 
 When you use AMQP you are free to use any format for your messages and any protocol for sending and receiving data. Postage gives you a predefined, though extensible, message format, the `Message` object. Moreover, through `GenericProducer`, it gives you a way to easily define an API, i.e. a set of shortcut functions that create and send messages, through which you can interact with your system.
 
@@ -175,7 +169,7 @@ To better introduce the simplification implemented by `GenericProducer` let us r
 
 3. For each exchange you want to receive the message you shall publish it giving the correct routing key for that exchange: the keys you can use are part of your messaging API, so you have to "document" them when you publish the specification for your exchanges.
 
-As you can see this can quickly lead to a bunch o repeated code, as the set of operation you need are opten the same or very similar; moreover, it needs a source of documentation outside the code, that is, the API does not document itself (here I mean: there is no way to get a grasp on the set of messages you are defining in your API).
+As you can see this can quickly lead to a bunch o repeated code, as the set of operation you need are often the same or very similar; moreover, it needs a source of documentation outside the code, that is, the API does not document itself (here I mean: there is no way to get a grasp on the set of messages you are defining in your API).
 
 Let us see how `GenericProducer` solves these issues.
 
@@ -197,7 +191,7 @@ class LoggingProducer(messaging.GenericProducer):
     pass
 ```
 
-since the aim of the producer is that of simplify sending messages to an exchange you can here specify a set of exchanges/key couples which will be used by default (more on this later).
+since the aim of the producer is that of simplify sending messages to an exchange you can here specify a set of exchanges/key couples (EKs) which will be used by default (more on this later).
 
 ``` python
 class LoggingProducer(messaging.GenericProducer):
@@ -214,7 +208,7 @@ class LoggingProducer(messaging.GenericProducer):
         return messaging.MessageStatus('online')
 ```
 
-This is enough to allow you to write the following code
+This allows you to write the following code
 
 ``` python
 producer = LoggingProducer()
@@ -223,59 +217,50 @@ producer.message_status_online()
 
 which will build a `MessageStatus` containing the `'online'` status string and will send it to the exchange named `logging-exchange` with `'log'` as routing key.
 
+### Magic methods
 
+As you can see `GenericProducer` automatically defines a `message_name()` method that wraps each of the `build_message_name()` methods you defines. The same happens with RPC messages, where the `rpc_name()` method is automatically created to wrap `build_rpc_name()`.
 
+`message_*()` methods accept two special keyword arguments, namely **_key**, **_eks**, that change the way the message is sent. The behaviour of the two keywords follows the following algorithm:
 
+1. Calling `message_name()` sends the message with the predefined `eks`, i.e. those defined in the producer class. This means that the message is sent to each exchange listed in the `eks` list of the class, with the relative key.
 
+2. Calling `message_name(_key='rk')` sends the message to the first exchange in `eks` with the key `rk`.
+3. Calling `message_name(_eks=[(exchange1, rk1), (exchange2, rk2)])` uses the specified eks instead of the content of the default `eks` variable; in this case sends the message to `exchange1` with routing key `rk1` and to `exchange2` with routing key `rk2`.
 
-Its main feature is to provide "magic" methods to send messages. The programmer must define a `build_message_NAME()` (or `build_rpc_NAME()`) method which returns a `Message` object (or derived) and the instanced object will provide a `message_NAME()` (or `rpc_NAME()`) method that sends the message to RabbitMQ.
+If you speficy both `_eks` and `_key` the latter will be ignored.
+This system allows you to specify a default behaviour when writing the producer and to customize the routing key or even the exchange on the fly.
 
-The four class attributes `eks`, `encoder_class`, `routing_key`, and `vhost` are used as defaults when sending messages. Virtual host and HUP can be redefined when deriving the class or when instancing it.
+RPC messages accept also `_timeout` (seconds), `_max_retry` and `_queue_only` to customize the behaviour of the producer when waiting for RPC answers (more on that later).
 
-The `eks` attribute (the name aims to be the plural of Exchange/Key) is a list of tuples in the form `(exchange_name:routing_key)`; the first exchange in this list is stored as the default exchange and used for RPC calls.
+### Fingerprint
 
-Magic methods `message_NAME()` and `rpc_NAME()` accept custom exchanges and routing keys specified at run-time. Using `message_NAME()` as an example (RPC magic methods have the same syntax) you can use three different forms of call
+When a `GenericProducer` is instanced a `Fingerprint` in its dictionary form can be passed as argument and this is included in each message object the producer sends. If not given, a bare fingerprint is created inside the object.
 
-* `message_NAME()` uses the `eks` class attribute.
-* `message_NAME(_key=KEY)` uses the default exchange and the given routing key to route the message.
-* `message_NAME(_eks={EXCHANGE_NAME:ROUTING_KEY, ...}) uses the given exchange/keys. This latter form ignores the possible `_key` parameter.
+``` python
+f = Fingerprint(name='mycomponent')
+producer = LoggingProducer(fingerprint=f.as_dict())
+producer.message_status_online()
+```
 
-When a `GenericProducer` is instanced a `Fingerprint` in its dictionary form can be passed as argument and this is included in each message object the producer sends.
+### Generic messages
 
-You can use a producer to send generic messages
+You can use a producer to send generic messages using the `message()` method
 
 ``` python
 p = messaging.GenericProducer()
 p.message(1, "str", values={1, 2, 3, "numbers"}, _eks=[(MyExchangeCls, "a_routing_key")])
 ```
 
-or inherit it and build a richer object
+### RPC calls
 
-```python
-class PingExchange(messaging.Exchange):
-    name = "ping-exchange"
-    exchange_type = "direct"
-    passive = False
-    durable = True
-    auto_delete = False
+RPC calls are blocking calls that leverage a very simple mechanism: the low level AMQP message is given a (usually temporary and private) queue through its `reply_to` property, and this is explicitely used by the receiver to send an answer.
 
-
-class PingProducer(messaging.GenericProducer):
-    eks = [(PingExchange, 'ping')]
-
-    def build_message_ping(self):
-        return messaging.MessageCommand('ping', parameters={'send_time':time.time()})
-
-p = PingProducer()
-p.message_ping()
-        
-```
-
-RPC calls are blocking calls that leverage the RPC mechanism of RabbitMQ (through `reply_to`). An RPC message is defined by a `build_rpc_NAME()` method and called with `rpc_NAME()`; it returns a result message as sent by the component that answered the call and thus its type should be one of MessageResult, MessageResultError or MessageResultException.
+In Postage an RPC message is defined by a `build_rpc_name()` method in a `GenericProducer` and called with `rpc_name()`; it returns a result message as sent by the component that answered the call and thus its type should be one of `MessageResult`, `MessageResultError` or `MessageResultException` for plain Postage.
 
 RPC messages accept the following parameters: `_timeout` (the message timeout, defaults to 30 seconds), `_max_retry` (the maximum number of times the message shall be sent again when timing out, default to 4), and `_queue_only` (the call returns the temporary queue on which the answer message will appear, instead of the message itself).
 
-When timing out the call is automatically retried, but when the maximum number of tries has been reached the call returns a `MessageResultException` with the `TimeoutError` exception.
+When the maximum number of tries has been reached the call returns a `MessageResultException` with the `TimeoutError` exception.
 
 GenericConsumer
 ---------------
