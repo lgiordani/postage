@@ -10,7 +10,10 @@ Change Log
 
 - (C) `_rpc_send()` was incorrectly using `self.eks[0]` instead of `eks[0]`. As a result RPC signals sent with a custom `_key` were not correctly delivered.
 
-**Version 3.0.2**
+**Version 3.0.3**
 
 - (C) `MessageHandlerType` class double declaration has been removed
 
+**Version 3.0.4**
+
+- (C) Removed double addition of declared queues in `GenericConsumer.add_eqk()`
