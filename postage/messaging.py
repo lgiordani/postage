@@ -617,8 +617,6 @@ class GenericConsumer(object):
 
     def add_eqk(self, eqk):
         for exchange_class, qk_list in eqk:
-            self.qk_list.extend(qk_list)
-            
             for queue, key in qk_list:
                 self.queue_bind(exchange_class, queue, key)
 
