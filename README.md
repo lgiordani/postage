@@ -41,6 +41,34 @@ So beware of the frightening version 4.0.0 that will crash your systems!
 
 This package, Postage, a Python library for AMQP-based network components, is licensed under the MPL, and may also be used under the terms of the GNU General Public License Version 2 or later (the "GPL"). For the MPL, please see LICENSE-MPL-Postage. For the GPL 2 please see LICENSE-GPL-2.0.
 
+# Quick start
+
+## A basic echo system
+
+Let's implement a basic echo system made of two programs. The first sits down and waits for incoming messages with the `'echo'` key, the second sends one message each time it is run.
+
+Be sure to have a running RabbitMQ system configured with a `/` virtual host and a `guest:guest` user/password.
+
+The file `echo_shared.py` contains the definition of the exchange in use
+```
+```
+
+The file `echo_send.py`defines a message producer and uses it to send a message
+```
+```
+
+The file `echo_receive.py` defines a message processor that catches incoming messages names `'echo'` and prints the string contained in it.
+```
+```
+
+Seems overkill? Indeed, for such a simple application, it is. The following example will hopefully show how those structures heavily simplify complex tasks.
+
+To run the example just open two shells, execute `python echo_receive.py` in the first one and `python `echo_send.py` in the second. If you get a `pika.exceptions.ProbableAuthenticationError` exception please check the configuration of the RabbitMQ server; you need to have a `/` virtual host and the `guest` user shall be active with password `guest`.
+
+## An advanced echo system
+
+
+
 # API Documentation
 
 Here you find a description of the messaging part of Postage. Being Postage based on AMQP, this help presumes you are familiar with structures defined by this latter (exchanges, queues, bindings, virtual hosts, ...) and that you already have a working messaging system (for example a RabbitMQ cluster).
@@ -223,7 +251,7 @@ As you can see `GenericProducer` automatically defines a `message_name()` method
 
 `message_*()` methods accept two special keyword arguments, namely **_key**, **_eks**, that change the way the message is sent. The behaviour of the two keywords follows the following algorithm:
 
-1. Calling `message_name()` sends the message with the predefined `eks`, i.e. those defined in the producer class. This means that the message is sent to each exchange listed in the `eks` list of the class, with the relative key.
+1. Calling `message_name()` sends the message with the predefined `eks`, i.e. those defined in the producer class. This means that the message is sent to each exchange listed in the `eks` list of the class, with the associated key.
 
 2. Calling `message_name(_key='rk')` sends the message to the first exchange in `eks` with the key `rk`.
 3. Calling `message_name(_eks=[(exchange1, rk1), (exchange2, rk2)])` uses the specified eks instead of the content of the default `eks` variable; in this case sends the message to `exchange1` with routing key `rk1` and to `exchange2` with routing key `rk2`.
@@ -249,7 +277,8 @@ You can use a producer to send generic messages using the `message()` method
 
 ``` python
 p = messaging.GenericProducer()
-p.message(1, "str", values={1, 2, 3, "numbers"}, _eks=[(MyExchangeCls, "a_routing_key")])
+p.message(1, "str", values={1, 2, 3, "numbers"},
+    _eks=[(MyExchangeCls, "a_routing_key")])
 ```
 
 ### RPC calls
@@ -265,9 +294,14 @@ When the maximum number of tries has been reached the call returns a `MessageRes
 GenericConsumer
 ---------------
 
-The `GenericConsumer` class implements an object that can connect to exchanges through queues and fetch messages. Recall from RabbitMQ that you have to declare a queue that subscribes a given exchange with a given routing key and that queue will automatically receive messages that match.
+The `GenericConsumer` class implements a standard AMQP consumer, i.e. an object that can connect to exchanges through queues and fetch messages. 
 
-The `GenericConsumer` derived class shall define an `eqk` class attribute which is a list of tuples in the form `(Exchange, [(Queue, Key), (Queue, Key), ...])`; each tuple means that the given exchange will be subscribed by the listed queues, each of them with the relative routing key.
+A class that inherits from `GenericConsumer` shall define an `eqk` class attribute which is a list of tuples in the form `(Exchange, [(Queue, Key), (Queue, Key), ...])`; each tuple means that the given exchange will be subscribed by the listed queues, each of them with the relative routing key.
+
+``` python
+class MyConsumer(GenericConsumer):
+    eqk = (PingExchage, [('ping_queue', 'ping_rk')], LogExchange, [('log_queue', 'log')])
+```
 
 Apart from declaring bindings in the class you can use the `queue_bind()` method that accept an exchange, a queue and a key. This can be useful if you have to declare queues at runtime or if parameters such as routing key depend on some value you cannot access at instantiation time.
 
