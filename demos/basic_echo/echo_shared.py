@@ -7,4 +7,3 @@ class EchoExchange(messaging.Exchange):
     passive = False
     durable = True
     auto_delete = False
-

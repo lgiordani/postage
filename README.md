@@ -43,31 +43,163 @@ This package, Postage, a Python library for AMQP-based network components, is li
 
 # Quick start
 
-## A basic echo system
+## A basic echo server
 
-Let's implement a basic echo system made of two programs. The first sits down and waits for incoming messages with the `'echo'` key, the second sends one message each time it is run.
+Let's implement a basic echo server made of two programs. The first sits down and waits for incoming messages with the `'echo'` key, the second sends one message each time it is run.
 
 Be sure to have a running RabbitMQ system configured with a `/` virtual host and a `guest:guest` user/password.
 
 The file `echo_shared.py` contains the definition of the exchange in use
-```
+
+``` python
+from postage import messaging
+
+
+class EchoExchange(messaging.Exchange):
+    name = "echo-exchange"
+    exchange_type = "direct"
+    passive = False
+    durable = True
+    auto_delete = False
 ```
 
 The file `echo_send.py`defines a message producer and uses it to send a message
-```
+
+``` python
+from postage import messaging
+import echo_shared
+
+
+class EchoProducer(messaging.GenericProducer):
+    eks = [(echo_shared.EchoExchange, 'echo')]
+
+producer = EchoProducer()
+producer.message_echo("A test message")
 ```
 
 The file `echo_receive.py` defines a message processor that catches incoming messages names `'echo'` and prints the string contained in it.
-```
+
+``` python
+from postage import microthreads
+from postage import messaging
+import echo_shared
+
+
+class EchoReceiveProcessor(messaging.MessageProcessor):
+    @messaging.MessageHandler('command', 'echo')
+    def msg_echo(self, content):
+        print content['parameters']
+
+eqk = [(echo_shared.EchoExchange, [('echo-queue', 'echo'), ])]
+
+scheduler = microthreads.MicroScheduler()
+scheduler.add_microthread(EchoReceiveProcessor({}, eqk, None, None))
+for i in scheduler.main():
+    pass
 ```
 
 Seems overkill? Indeed, for such a simple application, it is. The following example will hopefully show how those structures heavily simplify complex tasks.
 
-To run the example just open two shells, execute `python echo_receive.py` in the first one and `python `echo_send.py` in the second. If you get a `pika.exceptions.ProbableAuthenticationError` exception please check the configuration of the RabbitMQ server; you need to have a `/` virtual host and the `guest` user shall be active with password `guest`.
+To run the example just open two shells, execute `python echo_receive.py` in the first one and `python echo_send.py` in the second. If you get a `pika.exceptions.ProbableAuthenticationError` exception please check the configuration of the RabbitMQ server; you need to have a `/` virtual host and the `guest` user shall be active with password `guest`.
 
-## An advanced echo system
+## An advanced echo server
+
+Let's add a couple of features to our basic echo server example. First of all we want to get information about who is sending the message. This is an easy task for Fingerprint objects
+
+``` python
+from postage import messaging
+import echo_shared
 
 
+class EchoProducer(messaging.GenericProducer):
+    eks = [(echo_shared.EchoExchange, 'echo')]
+
+
+fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
+producer = EchoProducer(fingerprint)
+producer.message_echo("A single test message")
+```
+
+As you can see a Fingerprint just needs the name of the application (`echo_send`) and a categorization (`application`), and automatically collect data such as the PID and the host. On receiving the message you can decorate the receiving function with `MessageHandlerFullBody` to access the fingerprint
+
+``` python
+@messaging.MessageHandlerFullBody('command', 'echo')
+def msg_echo_fingerprint(self, body):
+    print "Message fingerprint: %s", body['fingerprint']
+```
+
+The second thing we are going to add is the ability to send fanout messages. When you connect to an exchange you can do it with a shared queue, i.e. a queue declared with the same name by all the receivers, or with a private queue, that is a unique queue for each receiver. The first setup leads to a round-robin consumer scenario, with the different receivers picking messages from the same queue in turn. The second setup, on the other hand, makes all the receivers get the same message simultaneously, acting like a fanout delivery.
+
+The file `echo_shared.py` does not change, since the Exchange has the same difinition. In `echo_receive.py` we make the greatest number of changes
+
+```
+from postage import microthreads
+from postage import messaging
+import echo_shared
+
+
+class EchoReceiveProcessor(messaging.MessageProcessor):
+    def __init__(self, fingerprint):
+        shared_queue = 'echo-queue'
+        private_queue = 'echo-queue-{0}{1}'.format(fingerprint['pid'],
+                                                   fingerprint['host'])
+
+        eqk = [
+            (echo_shared.EchoExchange, [
+                (shared_queue, 'echo'),
+                (private_queue, 'echo-fanout')
+            ]),
+        ]
+        super(EchoReceiveProcessor, self).__init__(fingerprint,
+                                                   eqk, None, None)
+
+    @messaging.MessageHandler('command', 'echo')
+    def msg_echo(self, content):
+        print content['parameters']
+
+    @messaging.MessageHandlerFullBody('command', 'echo')
+    def msg_echo_fingerprint(self, body):
+        print "Message fingerprint: %s", body['fingerprint']
+
+
+fingerprint = messaging.Fingerprint('echo_receive', 'controller').as_dict()
+
+scheduler = microthreads.MicroScheduler()
+scheduler.add_microthread(EchoReceiveProcessor(fingerprint))
+for i in scheduler.main():
+    pass
+```
+
+As you can see the `EchoReceiveProcessor` redefines the `__init__()` method to allow passing just a Fingerprint; as a side-effect, `eqk` is now defined inside the method, but its nature does not change. It encompasses now two queues for the same exchange; the first queue is chared, given that every instance of the reveiver just names it `echo-queue`, while the second is private because the name changes with the PID and the host of the current receiver, and those values together are unique in the cluster.
+
+So we expect that sending messages with the `echo` key will result in hitting just one of the receivers at a time, in a round-robin fashion, while sending messages with the `echo-fanout` queue will reach every receiver.
+
+We defined two different functions to process the incoming `echo` message, `msg_echo()` and `msg_echo_fingerprint`; this shows that multiple functions can be set as handler for the same messages. In this simple case the two functions could also be merged in a single one, but sometimes it is better to separate the code of different functionalities, not to mention that the code could also be loaded at run-time, through a plugin system or a live definition.
+
+## An RPC echo server
+
+The third version of the echo server shows how to implement RPC messaging. As before the exchange does not change its signature, so `echo_shared.py` remains the same. When sending the message we must specify the we want to send the RPC form using `rpc_echo()` instead of `message_echo()`
+
+``` python
+from postage import messaging
+import echo_shared
+
+class EchoProducer(messaging.GenericProducer):
+    eks = [(echo_shared.EchoExchange, 'echo')]
+
+fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
+producer = EchoProducer(fingerprint)
+
+reply = producer.rpc_echo("RPC test message")
+if reply:
+    print reply.body['content']['value']
+else:
+    print "RPC failed"
+```
+
+Remember that RPC calls are blocking, so your program will hang at the line `reply = producer.rpc_echo("RPC test message")`, waiting for the server to answer. Once the reply has been received, it can be tested and used as any other message; Postage RPC can return success, error or exception replies, and their content changes accordingly.
+
+The receiver does not change severely; you just need to change the handler dadicated to the incoming `echo` message. The decorator is now `RpcHandler` and the method must accept a third argument, that is the function that must be called to answer the incoming message. You have to pass this function a suitable message, i.e. a `MessageResult` if successfull, other messages to signal an error or an exception. Please note that after you called the reply function you can continue executing code.
 
 # API Documentation
 
