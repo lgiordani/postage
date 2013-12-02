@@ -19,7 +19,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='postage',
-    version='3.0.3',
+    version='1.0.0',
     description='a Python library for AMQP-based network components',
     long_description=readme + '\n\n' + history,
     author='Leonardo Giordani',

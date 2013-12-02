@@ -25,9 +25,7 @@ The current implementation is very simple and largely underused, due to the bloc
 
 # About versioning
 
-This is Postage version 3.0.3.
-
-You will not find versions prior 3.0.0. They have been used in a semi-production environment, but their development history is not worth being released (a good way to cover horrible mistakes made in the past =) ).
+This is Postage version 1.0.0.
 
 This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
@@ -35,13 +33,15 @@ This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAIN
 * Any change in the BOOST number is an API addition. It is transparent to running systems, but you should check the changelog to check what's new, perhaps that impossible thing is now easy as pie.
 * Any change in the API number has to be taken very seriously. Sorry but for some nasty reason the API changed, so your running code will no more work.
 
-So beware of the frightening version 4.0.0 that will crash your systems!
+So beware of the frightening version 2.0.0 that will crash your systems! =)
 
 # License
 
 This package, Postage, a Python library for AMQP-based network components, is licensed under the MPL, and may also be used under the terms of the GNU General Public License Version 2 or later (the "GPL"). For the MPL, please see LICENSE-MPL-Postage. For the GPL 2 please see LICENSE-GPL-2.0.
 
 # Quick start
+
+You can find the source code for the following examples in the `demos/` directory.
 
 ## A basic echo server
 
@@ -63,6 +63,8 @@ class EchoExchange(messaging.Exchange):
     auto_delete = False
 ```
 
+The class attributes are the standard paramenters of AMQP exchanges, see [`exchange_declare()`](https://pika.readthedocs.org/en/0.9.13/modules/adapters/blocking.html#pika.adapters.blocking_connection.BlockingChannel.exchange_declare) in Pika documentation.
+
 The file `echo_send.py`defines a message producer and uses it to send a message
 
 ``` python
@@ -77,7 +79,9 @@ producer = EchoProducer()
 producer.message_echo("A test message")
 ```
 
-The file `echo_receive.py` defines a message processor that catches incoming messages names `'echo'` and prints the string contained in it.
+The producer has two goals: the first is to define the standard exchange and routing key used to send the messages, which prevents you from specifying both each time you send a message. The second goal is to host functions that build messages; this is an advanced topic, so it is discussed later. In this simple case the producer does all the work behind the custain and you just need to call `message_echo()` providing it as many parameters as you want. The producer creates a command message named `'echo'`, packs all `*args` and `**kwds` you pass to the `message_echo()` method inside it, and sends it through the AMQP network.
+
+The file `echo_receive.py` defines a message processor that catches incoming command messages named `'echo'` and prints their payload.
 
 ``` python
 from postage import microthreads
@@ -98,7 +102,9 @@ for i in scheduler.main():
     pass
 ```
 
-Seems overkill? Indeed, for such a simple application, it is. The following example will hopefully show how those structures heavily simplify complex tasks.
+The catching method is arbitrarily called `msg_echo()` and decorated with `MessageHandler`, whose parameters are the type of the message (`command`, that means we are instructing a component to do something for us), and its name (`echo`, set calling the `message_echo()` method). The `msg_echo()` method must accept one parameter, besides `self`, that is the content of the message. The content is not the entire message, but a dictionary containing only the payload; in this case, for a `command` message, the
+
+Seems overkill? Indeed, for such a simple application, it is. The following examples will hopefully show how those structures heavily simplify complex tasks.
 
 To run the example just open two shells, execute `python echo_receive.py` in the first one and `python echo_send.py` in the second. If you get a `pika.exceptions.ProbableAuthenticationError` exception please check the configuration of the RabbitMQ server; you need to have a `/` virtual host and the `guest` user shall be active with password `guest`.
 
