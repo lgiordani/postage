@@ -21,7 +21,7 @@ Postage is a layer built on pika, and aims to simplify the implementation of the
 # About microthreads
 
 Postage leverages a microthread library to run network components.
-The current implementation is very simple and largely underused, due to the blocking nature of the pika adapter being used. Future plans include a replacement with a more powerful library. This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more. You can this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
+The current implementation is very simple and largely underused, due to the blocking nature of the pika adapter being used. Future plans include a replacement with a more powerful library. This implementation is a good starting point if you want to understand generator-based microthreads but do not expect more. You can read this series of articles [here](http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/) to begin digging in the matter.
 
 # About versioning
 
@@ -77,13 +77,15 @@ import echo_shared
 
 
 class EchoProducer(messaging.GenericProducer):
-    eks = [(echo_shared.EchoExchange, 'echo')]
+    eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
 producer = EchoProducer()
 producer.message_echo("A test message")
 ```
 
-The producer has two goals: the first is to define the standard exchange and routing key used to send the messages, which prevents you from specifying both each time you send a message. The second goal is to host functions that build messages; this is an advanced topic, so it is discussed later. In this simple case the producer does all the work behind the custain and you just need to call `message_echo()` providing it as many parameters as you want. The producer creates a command message named `'echo'`, packs all `*args` and `**kwds` you pass to the `message_echo()` method inside it, and sends it through the AMQP network.
+The producer has two goals: the first is to **define the standard exchange and routing key used to send the messages**, which prevents you from specifying both each time you send a message. The second goal is to **host functions that build messages**; this is an advanced topic, so it is discussed later.
+
+In this simple case the producer does all the work behind the curtain and you just need to call `message_echo()` providing it as many parameters as you want. The producer creates a command message named `'echo'`, packs all `*args` and `**kwds` you pass to the `message_echo()` method inside it, and sends it through the AMQP network.
 
 The file `echo_receive.py` defines a message processor that catches incoming command messages named `'echo'` and prints their payload.
 
@@ -98,7 +100,7 @@ class EchoReceiveProcessor(messaging.MessageProcessor):
     def msg_echo(self, content):
         print content['parameters']
 
-eqk = [(echo_shared.EchoExchange, [('echo-queue', 'echo'), ])]
+eqk = [(echo_shared.EchoExchange, [('echo-queue', 'echo-rk'), ])]
 
 scheduler = microthreads.MicroScheduler()
 scheduler.add_microthread(EchoReceiveProcessor({}, eqk, None, None))
@@ -122,12 +124,13 @@ import echo_shared
 
 
 class EchoProducer(messaging.GenericProducer):
-    eks = [(echo_shared.EchoExchange, 'echo')]
+    eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
 
 fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
 producer = EchoProducer(fingerprint)
 producer.message_echo("A single test message")
+producer.message_echo("A fanout test message", _key='echo-fanout-rk')
 ```
 
 As you can see a Fingerprint just needs the name of the application (`echo_send`) and a categorization (`application`), and automatically collect data such as the PID and the host. On receiving the message you can decorate the receiving function with `MessageHandlerFullBody` to access the fingerprint
@@ -156,8 +159,8 @@ class EchoReceiveProcessor(messaging.MessageProcessor):
 
         eqk = [
             (echo_shared.EchoExchange, [
-                (shared_queue, 'echo'),
-                (private_queue, 'echo-fanout')
+                (shared_queue, 'echo-rk'),
+                (private_queue, 'echo-fanout-rk')
             ]),
         ]
         super(EchoReceiveProcessor, self).__init__(fingerprint,
@@ -195,7 +198,7 @@ from postage import messaging
 import echo_shared
 
 class EchoProducer(messaging.GenericProducer):
-    eks = [(echo_shared.EchoExchange, 'echo')]
+    eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
 fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
 producer = EchoProducer(fingerprint)
@@ -208,6 +211,37 @@ else:
 ```
 
 Remember that RPC calls are blocking, so your program will hang at the line `reply = producer.rpc_echo("RPC test message")`, waiting for the server to answer. Once the reply has been received, it can be tested and used as any other message; Postage RPC can return success, error or exception replies, and their content changes accordingly.
+
+``` python
+from postage import microthreads
+from postage import messaging
+import echo_shared
+
+
+class EchoReceiveProcessor(messaging.MessageProcessor):
+    def __init__(self, fingerprint):
+        eqk = [
+            (echo_shared.EchoExchange, [
+                            ('echo-queue', 'echo-rk'),
+                            ]), 
+            ]
+        super(EchoReceiveProcessor, self).__init__(fingerprint, eqk, None, None)
+
+
+    @messaging.RpcHandler('command', 'echo')
+    def msg_echo(self, content, reply_func):
+        print content['parameters']
+        reply_func(messaging.MessageResult("RPC message received"))
+        
+
+
+fingerprint = messaging.Fingerprint('echo_receive', 'controller').as_dict()
+
+scheduler = microthreads.MicroScheduler()
+scheduler.add_microthread(EchoReceiveProcessor(fingerprint))
+for i in scheduler.main():
+    pass
+```
 
 The receiver does not change severely; you just need to change the handler dadicated to the incoming `echo` message. The decorator is now `RpcHandler` and the method must accept a third argument, that is the function that must be called to answer the incoming message. You have to pass this function a suitable message, i.e. a `MessageResult` if successfull, other messages to signal an error or an exception. Please note that after you called the reply function you can continue executing code.
 

@@ -7,7 +7,7 @@ class EchoReceiveProcessor(messaging.MessageProcessor):
     def __init__(self, fingerprint):
         eqk = [
             (echo_shared.EchoExchange, [
-                            ('echo-queue', 'echo'),
+                            ('echo-queue', 'echo-rk'),
                             ]), 
             ]
         super(EchoReceiveProcessor, self).__init__(fingerprint, eqk, None, None)

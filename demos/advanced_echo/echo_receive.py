@@ -11,8 +11,8 @@ class EchoReceiveProcessor(messaging.MessageProcessor):
 
         eqk = [
             (echo_shared.EchoExchange, [
-                (shared_queue, 'echo'),
-                (private_queue, 'echo-fanout')
+                (shared_queue, 'echo-rk'),
+                (private_queue, 'echo-fanout-rk')
             ]),
         ]
         super(EchoReceiveProcessor, self).__init__(fingerprint,
