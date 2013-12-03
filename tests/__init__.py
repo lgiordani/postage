@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-<<<<<<< HEAD
 
-=======
->>>>>>> c605e4e7c6d38ba07da65f0e37516b2d441134a6
+import test_postage
+
+if __name__ == '__main__':
+    unittest.TextTestRunner(verbosity=2).run(test_postage.suite())

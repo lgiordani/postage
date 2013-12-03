@@ -63,17 +63,18 @@ This library is versioned with a A.B.C schema ( **A**\ PI, **B**\ OOST,
 **C**\ OMPLAINT ).
 
 -  Any change in the COMPLAINT number is a bugfix or even a typo
-   correction; it is transparent to running systems (except that
-   hopefully that nasty bug is no more there).
+   correction in the documentation; it is transparent to running systems
+   (except that hopefully *that nasty bug* is no more there).
 -  Any change in the BOOST number is an API addition. It is transparent
    to running systems, but you should check the changelog to check
-   what's new, perhaps that impossible thing is now easy as pie.
+   what's new, perhaps *that impossible thing* is now easy as pie.
 -  Any change in the API number has to be taken very seriously. Sorry
-   but for some nasty reason the API changed, so your running code will
-   no more work.
+   but for some reason the API changed, so your running code will no
+   more work.
 
-So beware of the frightening version 2.0.0 that will crash your systems!
-=)
+So update to 1.0.x without hesitation, await the full-of-features 1.1.0
+release and beware of the frightening version 2.0.0 that will crash your
+systems! =)
 
 License
 =======
@@ -83,6 +84,12 @@ components, is licensed under the MPL, and may also be used under the
 terms of the GNU General Public License Version 2 or later (the "GPL").
 For the MPL, please see LICENSE-MPL-Postage. For the GPL 2 please see
 LICENSE-GPL-2.0.
+
+Contributing
+============
+
+Any form of contribution is highly welcome, from typos corrections to
+code patches. Feel free to clone the project and send pull requests.
 
 Quick start
 ===========
@@ -711,7 +718,10 @@ with the relative routing key.
 .. code:: python
 
     class MyConsumer(GenericConsumer):
-        eqk = (PingExchage, [('ping_queue', 'ping_rk')], LogExchange, [('log_queue', 'log')])
+        eqk = (
+            PingExchage, [('ping_queue', 'ping_rk')],
+            LogExchange, [('log_queue', 'log')]
+            )
 
 Apart from declaring bindings in the class you can use the
 ``queue_bind()`` method that accept an exchange, a queue and a key. This
@@ -722,8 +732,8 @@ instantiation time.
 MessageProcessor
 ----------------
 
-``MessageProcessor`` objects leverage ``GenericConsumer`` to full power
-=) A ``MessageProcessor`` is a ``MicroThread`` with two main attributes:
+``MessageProcessor`` objects boost ``GenericConsumer`` to full power =)
+A ``MessageProcessor`` is a ``MicroThread`` with two main attributes:
 ``self.consumer`` (a ``GenericConsumer`` or derived class) and a
 ``self.fingerprint`` (a ``Fingerprint`` in its dictionary form).
 
@@ -769,3 +779,16 @@ The last available decorator is ``MessageHandlerFullBody`` that passes
 to the decorated method or class the full body of the incoming message
 instead that only the value of the ``content`` key like
 ``MessageHandler`` and ``RpcHandler`` do.
+
+Default handlers
+~~~~~~~~~~~~~~~~
+
+``MessageProcessor`` objects define two default message handlers to
+process incoming command ``quit`` and command ``restart``. The first, as
+you can easily guess from the name, makes the component quit; actually
+it makes the consumer stop consuming messages and the microthread quit,
+so the program executes the code you put after the scheduler loop. If
+you put no code, the program just exits. The second command makes the
+component restart, i.e. it replaces itself with a new execution of the
+same program. This makes very easy to update running systems; just
+replace the code and send a ``restart`` to your components.
