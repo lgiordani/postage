@@ -32,7 +32,7 @@ setup(
     include_package_data=True,
     install_requires=[
     ],
-    license="MPL v1.1 and GPL v2.0 or newer",
+    license="GPL v2.0 or newer",
     zip_safe=False,
     keywords='postage',
     classifiers=[
