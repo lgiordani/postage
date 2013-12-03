@@ -474,3 +474,9 @@ The last available decorator is `MessageHandlerFullBody` that passes to the deco
 
 `MessageProcessor` objects define two default message handlers to process incoming command `quit` and command `restart`. The first, as you can easily guess from the name, makes the component quit; actually it makes the consumer stop consuming messages and the microthread quit, so the program executes the code you put after the scheduler loop. If you put no code, the program just exits. The second command makes the component restart, i.e. it replaces itself with a new execution of the same program. This makes very easy to update running systems; just replace the code and send a `restart` to your components.
 
+### Credits
+
+First of all I want to mention and thank the [Erlang](www.erlang.org) and [RabbitMQ](www.rabbitmq.com) teams and the maintainer of [pika](https://github.com/pika/pika), Gavin M. Roy, for their hard work, and for releasing such amazing pieces of software as open source.
+
+Many thanks to [Jeff Knupp](http://www.jeffknupp.com/about-me/) for his post [Open Sourcing a Python Project the Right Way](http://www.jeffknupp.com/blog/2013/08/16/open-sourcing-a-python-project-the-right-way/) and to [Audrey M. Roy](http://www.audreymroy.com/) for her [cookiecutter](https://github.com/audreyr/cookiecutter) and [cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage) tools. All those things make Python packaging a breeze.
+
