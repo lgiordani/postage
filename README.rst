@@ -1,6 +1,8 @@
 Postage - a Python library for AMQP-based network components
 ============================================================
 
+|Build Status| |Version| |PyPi Downloads|
+
 Postage is a Python library which leverages
 `pika <https://github.com/pika/pika>`__ and AMQP (through a broker like
 `RabbitMQ <http://www.rabbitmq.com/>`__) to build network-aware software
@@ -847,3 +849,10 @@ and to `Audrey M. Roy <http://www.audreymroy.com/>`__ for her
 `cookiecutter <https://github.com/audreyr/cookiecutter>`__ and
 `cookiecutter-pypackage <https://github.com/audreyr/cookiecutter-pypackage>`__
 tools. All those things make Python packaging a breeze.
+
+.. |Build Status| image:: https://travis-ci.org/lgiordani/postage.png?branch=master
+   :target: https://travis-ci.org/lgiordani/postage
+.. |Version| image:: https://badge.fury.io/py/postage.png
+   :target: http://badge.fury.io/py/postage
+.. |PyPi Downloads| image:: https://pypip.in/d/postage/badge.png
+   :target: https://crate.io/packages/postage?version=latest
