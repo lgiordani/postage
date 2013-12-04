@@ -73,7 +73,7 @@ class EchoExchange(messaging.Exchange):
     auto_delete = False
 ```
 
-The class attributes are the standard paramenters of AMQP exchanges, see [`exchange_declare()`](https://pika.readthedocs.org/en/0.9.13/modules/adapters/blocking.html#pika.adapters.blocking_connection.BlockingChannel.exchange_declare) in Pika documentation.
+The class attributes are the standard paramenters of AMQP exchanges, see `exchange_declare()` in Pika [documentation](https://pika.readthedocs.org/en/0.9.13/modules/adapters/blocking.html#pika.adapters.blocking_connection.BlockingChannel.exchange_declare).
 
 The file `echo_send.py`defines a message producer and uses it to send a message
 
@@ -326,7 +326,7 @@ message = {
 
 The `content` key contains the actual data you put in your message, and its structure is free.
 
-**Command** messages send a command to another component. The command can be a fire-and-forget one or an RPC call, according to the message category; the former is implemented by the `MessageCommand` class, while the latter is implemented by `RpcCommand`. Both classes need the name of the command and an optional dictionary of parameters, which are imposed by the actual command. The message fingerprint can be set with its `fingerprint(**kwds)` method.ы
+**Command** messages send a command to another component. The command can be a fire-and-forget one or an RPC call, according to the message category; the former is implemented by the `MessageCommand` class, while the latter is implemented by `RpcCommand`. Both classes need the name of the command and an optional dictionary of parameters, which are imposed by the actual command. The message fingerprint can be set with its `fingerprint(**kwds)` method.
 
 ``` python
     m = messaging.MessageCommand('sum', parameters={a=5, b=6})
@@ -335,7 +335,7 @@ The `content` key contains the actual data you put in your message, and its stru
 ```
 
 **Status** messages bear the status of an application, along with the application fingerprint. The class which implements this type is `MessageStatus`. This object needs only a single parameter, which is the status itself. Not that as long as the status is serializable, it can be of any nature.
-ы
+
 ``` python
     m = messaging.MessageStatus('online')
 ```
@@ -381,9 +381,7 @@ To better introduce the simplification implemented by `GenericProducer` let us r
 
 As you can see this can quickly lead to a bunch o repeated code, as the set of operation you need are often the same or very similar; moreover, it needs a source of documentation outside the code, that is, the API does not document itself (here I mean: there is no way to get a grasp on the set of messages you are defining in your API).
 
-Let us see how `GenericProducer` solves these issues.
-
-First of all you need to define an exchange:
+Let us see how `GenericProducer` solves these issues. First of all you need to define an exchange:
 
 ``` python
 class LoggingExchange(messaging.Exchange):
