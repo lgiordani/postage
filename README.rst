@@ -50,7 +50,7 @@ current implementation is very simple and largely underused, due to the
 blocking nature of the pika adapter being used. Future plans include a
 replacement with a more powerful library. This implementation is a good
 starting point if you want to understand generator-based microthreads
-but do not expect more. You can this series of articles
+but do not expect more. You can read this series of articles
 `here <http://lgiordani.github.io/blog/2013/03/25/python-generators-from-iterators-to-cooperative-multitasking/>`__
 to begin digging in the matter.
 
@@ -76,13 +76,17 @@ So update to 1.0.x without hesitation, await the full-of-features 1.1.0
 release and beware of the frightening version 2.0.0 that will crash your
 systems! =)
 
+[The code contained in the *master* branch on GitHub before the PyPI
+release was marked with version 3.0.x. Indeed that is the real version
+of the package but since previous versions were not released I wanted to
+be a good releaser and start from version 1]
+
 License
 =======
 
 This package, Postage, a Python library for AMQP-based network
-components, is licensed under the MPL, and may also be used under the
-terms of the GNU General Public License Version 2 or later (the "GPL").
-For the MPL, please see LICENSE-MPL-Postage. For the GPL 2 please see
+components, is licensed under the terms of the GNU General Public
+License Version 2 or later (the "GPL"). For the GPL 2 please see
 LICENSE-GPL-2.0.
 
 Contributing
@@ -136,21 +140,23 @@ send a message
 
 
     class EchoProducer(messaging.GenericProducer):
-        eks = [(echo_shared.EchoExchange, 'echo')]
+        eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
     producer = EchoProducer()
     producer.message_echo("A test message")
 
-The producer has two goals: the first is to define the standard exchange
-and routing key used to send the messages, which prevents you from
-specifying both each time you send a message. The second goal is to host
-functions that build messages; this is an advanced topic, so it is
-discussed later. In this simple case the producer does all the work
-behind the custain and you just need to call ``message_echo()``
-providing it as many parameters as you want. The producer creates a
-command message named ``'echo'``, packs all ``*args`` and ``**kwds`` you
-pass to the ``message_echo()`` method inside it, and sends it through
-the AMQP network.
+The producer has two goals: the first is to **define the standard
+exchange and routing key used to send the messages**, which prevents you
+from specifying both each time you send a message. The second goal is to
+**host functions that build messages**; this is an advanced topic, so it
+is discussed later.
+
+In this simple case the producer does all the work behind the curtain
+and you just need to call ``message_echo()`` providing it as many
+parameters as you want. The producer creates a command message named
+``'echo'``, packs all ``*args`` and ``**kwds`` you pass to the
+``message_echo()`` method inside it, and sends it through the AMQP
+network.
 
 The file ``echo_receive.py`` defines a message processor that catches
 incoming command messages named ``'echo'`` and prints their payload.
@@ -167,7 +173,7 @@ incoming command messages named ``'echo'`` and prints their payload.
         def msg_echo(self, content):
             print content['parameters']
 
-    eqk = [(echo_shared.EchoExchange, [('echo-queue', 'echo'), ])]
+    eqk = [(echo_shared.EchoExchange, [('echo-queue', 'echo-rk'), ])]
 
     scheduler = microthreads.MicroScheduler()
     scheduler.add_microthread(EchoReceiveProcessor({}, eqk, None, None))
@@ -177,11 +183,12 @@ incoming command messages named ``'echo'`` and prints their payload.
 The catching method is arbitrarily called ``msg_echo()`` and decorated
 with ``MessageHandler``, whose parameters are the type of the message
 (``command``, that means we are instructing a component to do something
-for us), and its name (``echo``, set calling the ``message_echo()``
-method). The ``msg_echo()`` method must accept one parameter, besides
-``self``, that is the content of the message. The content is not the
-entire message, but a dictionary containing only the payload; in this
-case, for a ``command`` message, the
+for us), and its name (``echo``, automatically set by calling the
+``message_echo()`` method). The ``msg_echo()`` method must accept one
+parameter, besides ``self``, that is the content of the message. The
+content is not the entire message, but a dictionary containing only the
+payload; in this case, for a generic ``command`` message, the payload is
+a dictionary containing only the ``parameters`` key, that is
 
 Seems overkill? Indeed, for such a simple application, it is. The
 following examples will hopefully show how those structures heavily
@@ -209,12 +216,13 @@ is an easy task for Fingerprint objects
 
 
     class EchoProducer(messaging.GenericProducer):
-        eks = [(echo_shared.EchoExchange, 'echo')]
+        eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
 
     fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
     producer = EchoProducer(fingerprint)
     producer.message_echo("A single test message")
+    producer.message_echo("A fanout test message", _key='echo-fanout-rk')
 
 As you can see a Fingerprint just needs the name of the application
 (``echo_send``) and a categorization (``application``), and
@@ -256,8 +264,8 @@ changes
 
             eqk = [
                 (echo_shared.EchoExchange, [
-                    (shared_queue, 'echo'),
-                    (private_queue, 'echo-fanout')
+                    (shared_queue, 'echo-rk'),
+                    (private_queue, 'echo-fanout-rk')
                 ]),
             ]
             super(EchoReceiveProcessor, self).__init__(fingerprint,
@@ -316,7 +324,7 @@ specify the we want to send the RPC form using ``rpc_echo()`` instead of
     import echo_shared
 
     class EchoProducer(messaging.GenericProducer):
-        eks = [(echo_shared.EchoExchange, 'echo')]
+        eks = [(echo_shared.EchoExchange, 'echo-rk')]
 
     fingerprint = messaging.Fingerprint('echo_send', 'application').as_dict()
     producer = EchoProducer(fingerprint)
@@ -332,6 +340,37 @@ line ``reply = producer.rpc_echo("RPC test message")``, waiting for the
 server to answer. Once the reply has been received, it can be tested and
 used as any other message; Postage RPC can return success, error or
 exception replies, and their content changes accordingly.
+
+.. code:: python
+
+    from postage import microthreads
+    from postage import messaging
+    import echo_shared
+
+
+    class EchoReceiveProcessor(messaging.MessageProcessor):
+        def __init__(self, fingerprint):
+            eqk = [
+                (echo_shared.EchoExchange, [
+                                ('echo-queue', 'echo-rk'),
+                                ]), 
+                ]
+            super(EchoReceiveProcessor, self).__init__(fingerprint, eqk, None, None)
+
+
+        @messaging.RpcHandler('command', 'echo')
+        def msg_echo(self, content, reply_func):
+            print content['parameters']
+            reply_func(messaging.MessageResult("RPC message received"))
+            
+
+
+    fingerprint = messaging.Fingerprint('echo_receive', 'controller').as_dict()
+
+    scheduler = microthreads.MicroScheduler()
+    scheduler.add_microthread(EchoReceiveProcessor(fingerprint))
+    for i in scheduler.main():
+        pass
 
 The receiver does not change severely; you just need to change the
 handler dadicated to the incoming ``echo`` message. The decorator is now
@@ -792,3 +831,19 @@ you put no code, the program just exits. The second command makes the
 component restart, i.e. it replaces itself with a new execution of the
 same program. This makes very easy to update running systems; just
 replace the code and send a ``restart`` to your components.
+
+Credits
+~~~~~~~
+
+First of all I want to mention and thank the `Erlang <www.erlang.org>`__
+and `RabbitMQ <www.rabbitmq.com>`__ teams and the maintainer of
+`pika <https://github.com/pika/pika>`__, Gavin M. Roy, for their hard
+work, and for releasing such amazing pieces of software as open source.
+
+Many thanks to `Jeff Knupp <http://www.jeffknupp.com/about-me/>`__ for
+his post `Open Sourcing a Python Project the Right
+Way <http://www.jeffknupp.com/blog/2013/08/16/open-sourcing-a-python-project-the-right-way/>`__
+and to `Audrey M. Roy <http://www.audreymroy.com/>`__ for her
+`cookiecutter <https://github.com/audreyr/cookiecutter>`__ and
+`cookiecutter-pypackage <https://github.com/audreyr/cookiecutter-pypackage>`__
+tools. All those things make Python packaging a breeze.

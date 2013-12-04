@@ -35,6 +35,8 @@ This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAIN
 
 So update to 1.0.x without hesitation, await the full-of-features 1.1.0 release and beware of the frightening version 2.0.0 that will crash your systems! =)
 
+[The code contained in the _master_ branch on GitHub before the PyPI release was marked with version 3.0.x. Indeed that is the real version of the package but since previous versions were not released I wanted to be a good releaser and start from version 1]
+
 # License
 
 This package, Postage, a Python library for AMQP-based network components, is licensed under the terms of the GNU General Public License Version 2 or later (the "GPL"). For the GPL 2 please see LICENSE-GPL-2.0.
@@ -108,7 +110,7 @@ for i in scheduler.main():
     pass
 ```
 
-The catching method is arbitrarily called `msg_echo()` and decorated with `MessageHandler`, whose parameters are the type of the message (`command`, that means we are instructing a component to do something for us), and its name (`echo`, set calling the `message_echo()` method). The `msg_echo()` method must accept one parameter, besides `self`, that is the content of the message. The content is not the entire message, but a dictionary containing only the payload; in this case, for a `command` message, the
+The catching method is arbitrarily called `msg_echo()` and decorated with `MessageHandler`, whose parameters are the type of the message (`command`, that means we are instructing a component to do something for us), and its name (`echo`, automatically set by calling the `message_echo()` method). The `msg_echo()` method must accept one parameter, besides `self`, that is the content of the message. The content is not the entire message, but a dictionary containing only the payload; in this case, for a generic `command` message, the payload is a dictionary containing only the `parameters` key, that is 
 
 Seems overkill? Indeed, for such a simple application, it is. The following examples will hopefully show how those structures heavily simplify complex tasks.
 
