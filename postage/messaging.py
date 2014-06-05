@@ -649,7 +649,7 @@ class GenericConsumer(object):
             print("Consumer {name}: Declaring queue {q}".
                   format(name=self.__class__.__name__,
                          q=queue))
-        self.channel.queue_declare(queue=queue, auto_delete=True)
+        self.channel.queue_declare(queue=queue)
         if debug_mode:
             print("Consumer {name}: binding queue {q} with exchange {e} with routing key {k}".
                   format(name=self.__class__.__name__,
