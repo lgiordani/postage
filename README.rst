@@ -59,7 +59,7 @@ to begin digging in the matter.
 About versioning
 ================
 
-This is Postage version 1.0.0.
+This is Postage version 1.0.1.
 
 This library is versioned with a A.B.C schema ( **A**\ PI, **B**\ OOST,
 **C**\ OMPLAINT ).
@@ -672,7 +672,7 @@ messages, where the ``rpc_name()`` method is automatically created to
 wrap ``build_rpc_name()``.
 
 ``message_*()`` methods accept two special keyword arguments, namely
-**\_key**, **\_eks**, that change the way the message is sent. The
+***key\ **, ***\ eks**, that change the way the message is sent. The
 behaviour of the two keywords follows the following algorithm:
 
 1. Calling ``message_name()`` sends the message with the predefined
