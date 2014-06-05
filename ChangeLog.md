@@ -3,3 +3,8 @@ Change Log
 **Version 1.0.0**
 
 - First release on PyPI. This is the release previously known as 3.0.4 on GitHub.
+
+**Version 1.0.1**
+
+- Queues created through `queue_bind()` were declared with `auto_delete=True`, which made the queue disappear as soon as no more consumers were reading from it. This made the consumer lose all messages waiting in the queue. Fixed by removing the `auto_delete=True` parameter.
+
