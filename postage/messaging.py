@@ -9,6 +9,7 @@ import sys
 import socket
 import time
 import traceback
+import collections
 
 import microthreads
 
@@ -602,6 +603,8 @@ class GenericConsumer(object):
     hup = global_hup
 
     # List of (Exchange, [(Queue, Key), (Queue, Key), ...])
+    # Queue may be specified as string (the name of the queue) or
+    # as a dictionary {'name':queue_name, 'flags':{'flag1':True, 'flag2':False}}
     eqk = []
 
     def __init__(self, eqk=[], hup=None, vhost=None):
@@ -636,20 +639,28 @@ class GenericConsumer(object):
 
     def add_eqk(self, eqk):
         for exchange_class, qk_list in eqk:
-            for queue, key in qk_list:
-                self.queue_bind(exchange_class, queue, key)
+            for queue_info, key in qk_list:
+                if isinstance(queue_info, collections.Mapping):
+                    self.queue_bind(exchange_class,
+                        queue_info['name'],
+                        key,
+                        **queue_info['flags'])
+                else:
+                    self.queue_bind(exchange_class, queue_info, key)
 
-    def queue_bind(self, exchange_class, queue, key):
+    def queue_bind(self, exchange_class, queue, key, **kwds):
         if debug_mode:
             print("Consumer {name}: Declaring exchange {e}".
                   format(name=self.__class__.__name__,
                          e=exchange_class))
         self.channel.exchange_declare(**exchange_class.parameters)
+        
         if debug_mode:
             print("Consumer {name}: Declaring queue {q}".
                   format(name=self.__class__.__name__,
                          q=queue))
-        self.channel.queue_declare(queue=queue)
+        self.channel.queue_declare(queue=queue, **kwds)
+        
         if debug_mode:
             print("Consumer {name}: binding queue {q} with exchange {e} with routing key {k}".
                   format(name=self.__class__.__name__,

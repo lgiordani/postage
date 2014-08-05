@@ -475,7 +475,7 @@ When the maximum number of tries has been reached the call returns a `MessageRes
 
 The `GenericConsumer` class implements a standard AMQP consumer, i.e. an object that can connect to exchanges through queues and fetch messages. 
 
-A class that inherits from `GenericConsumer` shall define an `eqk` class attribute which is a list of tuples in the form `(Exchange, [(Queue, Key), (Queue, Key), ...])`; each tuple means that the given exchange will be subscribed by the listed queues, each of them with the relative routing key.
+A class that inherits from `GenericConsumer` shall define an `eqk` class attribute which is a list of tuples in the form `(Exchange, [(Queue, Key), (Queue, Key), ...])`; each tuple means that the given exchange will be subscribed by the listed queues, each of them with the relative routing key. The Queue may be defined as a plain string (the name of the queue) or as a dictionary with the 'name' and 'flags' keys; the second key will identify a dictionary of flags, such as `{'auto_delete':True}`.
 
 ``` python
 class MyConsumer(GenericConsumer):
