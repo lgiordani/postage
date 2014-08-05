@@ -59,7 +59,7 @@ to begin digging in the matter.
 About versioning
 ================
 
-This is Postage version 1.0.1.
+This is Postage version 1.0.2.
 
 This library is versioned with a A.B.C schema ( **A**\ PI, **B**\ OOST,
 **C**\ OMPLAINT ).
@@ -756,7 +756,10 @@ A class that inherits from ``GenericConsumer`` shall define an ``eqk``
 class attribute which is a list of tuples in the form
 ``(Exchange, [(Queue, Key), (Queue, Key), ...])``; each tuple means that
 the given exchange will be subscribed by the listed queues, each of them
-with the relative routing key.
+with the relative routing key. The Queue may be defined as a plain
+string (the name of the queue) or as a dictionary with the 'name' and
+'flags' keys; the second key will identify a dictionary of flags, such
+as ``{'auto_delete':True}``.
 
 .. code:: python
 
