@@ -29,7 +29,7 @@ The current implementation is very simple and largely underused, due to the bloc
 
 # About versioning
 
-This is Postage version 1.0.1.
+This is Postage version 1.0.2.
 
 This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
