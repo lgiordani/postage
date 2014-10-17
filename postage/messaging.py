@@ -985,7 +985,8 @@ class MessageProcessor(microthreads.MicroThread):
                             print("Expected format:", callable_obj._format)
                         raise RejectMessage
 
-                    filtered_body = self._filter_message(decoded_body)
+                    filtered_body = self._filter_message(
+                        callable_obj, decoded_body)
 
                     callable_obj(self, filtered_body)
             elif message_category == 'rpc':
@@ -1021,7 +1022,8 @@ class MessageProcessor(microthreads.MicroThread):
                                         "Expected format:", callable_obj._format)
                                 raise RejectMessage
 
-                            filtered_body = self._filter_message(filtered_body)
+                            filtered_body = self._filter_message(
+                                callable_obj, filtered_body)
                             callable_obj(self, filtered_body, reply_func)
                 except Exception as exc:
                     reply_func(MessageResultException(
