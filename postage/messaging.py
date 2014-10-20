@@ -10,6 +10,7 @@ import socket
 import time
 import traceback
 import collections
+import copy
 
 import microthreads
 
@@ -846,7 +847,7 @@ class MessageFormat(object):
         self.format = _format
 
     def __call__(self, func):
-        func.format = self.format
+        func._format = self.format
         return func
 
 
@@ -940,12 +941,18 @@ class MessageProcessor(microthreads.MicroThread):
         for key in _format:
             # This happens if the key is a simple string
             if not isinstance(key, collections.MutableSequence):
-                if not key in message_body:
+                if not key in message_body.keys():
                     raise FormatMismatch
+                return True
             else:
-                # Recursive call
-                if not self._check_format(key, message_body[key[0]]):
+                if not key[0] in message_body:
                     raise FormatMismatch
+
+                # Recursive call
+                if not self._check_format(key[1], message_body[key[0]]):
+                    raise FormatMismatch
+
+                return True
 
     def _msg_consumer(self, channel, method, header, body):
         decoded_body = self.consumer.decode(body)
@@ -966,11 +973,10 @@ class MessageProcessor(microthreads.MicroThread):
                                                        message_name), [])
 
                 for callable_obj, body_key in handlers:
-                    filtered_body = {}
                     if body_key is None:
-                        filtered_body.update(decoded_body)
+                        filtered_body = copy.deepcopy(decoded_body)
                     else:
-                        filtered_body.update(decoded_body[body_key])
+                        filtered_body = copy.deepcopy(decoded_body[body_key])
 
                     try:
                         self._check_format(callable_obj._format, filtered_body)
@@ -986,7 +992,7 @@ class MessageProcessor(microthreads.MicroThread):
                         raise RejectMessage
 
                     filtered_body = self._filter_message(
-                        callable_obj, decoded_body)
+                        callable_obj, filtered_body)
 
                     callable_obj(self, filtered_body)
             elif message_category == 'rpc':
