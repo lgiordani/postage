@@ -47,10 +47,10 @@ global_hup = {
 }
 
 
-class FormatMismatch(Exception):
+class FilterError(Exception):
 
-    """This exception is used to signal that the incoming message does
-    not have the correct format."""
+    """This exception is used to signal that a filter encountered some 
+    problem with the incoming message."""
     pass
 
 
@@ -808,14 +808,16 @@ class MessageFilter(object):
 
     """
 
-    def __init__(self, _callable):
+    def __init__(self, _callable, *args, **kwds):
         self.callable = _callable
+        self.args = args
+        self.kwds = kwds
 
     def __call__(self, func):
         try:
-            func.filters.append(self.callable)
+            func.filters.append((self.callable, self.args, self.kwds))
         except AttributeError:
-            func.filters = [self.callable]
+            func.filters = [(self.callable, self.args, self.kwds)]
         return func
 
 
@@ -879,6 +881,32 @@ class MessageHandlerType(type):
                 cls._message_handlers[message_key].append((method, body_key))
 
 
+def check_message_format(message_body, *args, **kwds):
+    # A recursive function to check message format
+
+    # Messages are short, so Python 2 behaves well
+    # even if keys() does not return an iterator.
+    for key in args[0]:
+        # This happens if the key is a simple string
+        if not isinstance(key, collections.MutableSequence):
+            if not key in message_body.keys():
+                raise FilterError(
+                    "Expected format {} - incoming message is {}".format(
+                        args[0],
+                        message_body
+                    )
+                )
+            return message_body
+        else:
+            if not key[0] in message_body:
+                raise FilterError
+
+            # Recursive call
+            check_message_format(key[1], message_body[key[0]])
+
+            return message_body
+
+
 class MessageProcessor(microthreads.MicroThread):
 
     """A MessageProcessor is a MicroThread with MessageHandlerType as
@@ -926,33 +954,21 @@ class MessageProcessor(microthreads.MicroThread):
         filtered_body.update(message_body)
 
         try:
-            for _filter in callable_obj.filters:
-                filtered_body = _filter(filtered_body)
+            for _filter, args, kwds in callable_obj.filters:
+                try:
+                    filtered_body = _filter(filtered_body, *args, **kwds)
+                except FilterError as exc:
+                    if debug_mode:
+                        print("Filter failure")
+                        print("  Filter:", _filter)
+                        print("  Args:  ", args)
+                        print("  Kwds:  ", kwds)
+                        print("  Filter message:", exc.args)
+                    raise
         except AttributeError:
             pass
 
         return filtered_body
-
-    def _check_format(self, _format, message_body):
-        # A recursive function to check message format
-
-        # Messages are short, so Python 2 behaves well
-        # even if keys() does not return an iterator.
-        for key in _format:
-            # This happens if the key is a simple string
-            if not isinstance(key, collections.MutableSequence):
-                if not key in message_body.keys():
-                    raise FormatMismatch
-                return True
-            else:
-                if not key[0] in message_body:
-                    raise FormatMismatch
-
-                # Recursive call
-                if not self._check_format(key[1], message_body[key[0]]):
-                    raise FormatMismatch
-
-                return True
 
     def _msg_consumer(self, channel, method, header, body):
         decoded_body = self.consumer.decode(body)
@@ -979,22 +995,13 @@ class MessageProcessor(microthreads.MicroThread):
                         filtered_body = copy.deepcopy(decoded_body[body_key])
 
                     try:
-                        self._check_format(callable_obj._format, filtered_body)
-                    except AttributeError:
-                        pass
-                    except FormatMismatch:
+                        filtered_body = self._filter_message(
+                            callable_obj, filtered_body)
+
+                        callable_obj(self, filtered_body)
+                    except FilterError:
                         if debug_mode:
-                            print("-- Format mismatch --")
-                            print(
-                                "Message handler {0} rejected the message".format(callable_obj))
-                            print("Incoming message body:", filtered_body)
-                            print("Expected format:", callable_obj._format)
-                        raise RejectMessage
-
-                    filtered_body = self._filter_message(
-                        callable_obj, filtered_body)
-
-                    callable_obj(self, filtered_body)
+                            print("Filter error in handler", callable_obj)
             elif message_category == 'rpc':
                 try:
                     reply_func = functools.partial(
@@ -1013,24 +1020,13 @@ class MessageProcessor(microthreads.MicroThread):
                             filtered_body.update(decoded_body['content'])
 
                             try:
-                                self._check_format(
-                                    callable_obj._format, filtered_body)
-                            except AttributeError:
-                                pass
-                            except FormatMismatch:
+                                filtered_body = self._filter_message(
+                                    callable_obj, filtered_body)
+                                callable_obj(self, filtered_body, reply_func)
+                            except FilterError:
                                 if debug_mode:
-                                    print("-- Format mismatch --")
                                     print(
-                                        "Message handler {0} rejected the message".format(callable_obj))
-                                    print(
-                                        "Incoming message body:", filtered_body)
-                                    print(
-                                        "Expected format:", callable_obj._format)
-                                raise RejectMessage
-
-                            filtered_body = self._filter_message(
-                                callable_obj, filtered_body)
-                            callable_obj(self, filtered_body, reply_func)
+                                        "Filter error in handler", callable_obj)
                 except Exception as exc:
                     reply_func(MessageResultException(
                         exc.__class__.__name__, exc.__str__()))
