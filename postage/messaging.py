@@ -10,6 +10,7 @@ import socket
 import time
 import traceback
 import collections
+import copy
 
 import microthreads
 
@@ -43,14 +44,23 @@ global_hup = {
     'host': 'localhost',
     'user': global_user,
     'password': global_password
-    }
+}
+
+
+class FilterError(Exception):
+
+    """This exception is used to signal that a filter encountered some 
+    problem with the incoming message."""
+    pass
 
 
 class Fingerprint(object):
+
     """The fingerprint of a component.
     This class encompasses all the values the library uses to identify the
     component in the running system.
     """
+
     def __init__(self, name=None, type=None, pid=os.getpid(),
                  host=socket.gethostname(), user=getpass.getuser(),
                  vhost=global_vhost):
@@ -71,6 +81,7 @@ class Fingerprint(object):
 
 
 class Encoder(object):
+
     """The base message encoder.
     An encoder knows how to encode and decode messages
     to plain strings which can be delivered by AMQP.
@@ -101,6 +112,7 @@ class Encoder(object):
 
 
 class JsonEncoder(Encoder):
+
     """A simple JSON encoder and decoder"""
 
     content_type = "application/json"
@@ -115,18 +127,21 @@ class JsonEncoder(Encoder):
 
 
 class RejectMessage(ValueError):
+
     """This exception is used to signal that one of the filters
     rejected the message"""
     pass
 
 
 class AckAndRestart(ValueError):
+
     """This exception is used to signal that the message must be acked
     and the application restarted"""
     pass
 
 
 class Message(object):
+
     """This class is the base Postage message.
     Message type can be 'command', 'status' or 'result'. Command messages
     transport a command we want to send to a component, either a direct one or
@@ -175,6 +190,7 @@ class Message(object):
 
 
 class MessageCommand(Message):
+
     """The base implementation of a command message.
     """
     type = 'command'
@@ -186,6 +202,7 @@ class MessageCommand(Message):
 
 
 class RpcCommand(MessageCommand):
+
     """The base implementation of an RPC message.
     This is exactly the same as a standard cammand message. This is implemented
     in a custom class to allow us to tell apart which messages need an answer.
@@ -195,6 +212,7 @@ class RpcCommand(MessageCommand):
 
 
 class MessageStatus(Message):
+
     """Status of a component.
     A component which wants to send its status to another component
     can leverage this type of message. It adds to the content the
@@ -213,6 +231,7 @@ class MessageStatus(Message):
 
 
 class MessageResult(Message):
+
     """Result of an RPC call.
     This type of message adds the follwing keys to the message content: type
     (the type of result - success, error of exception), value (the Python value
@@ -253,11 +272,13 @@ class MessageResultException(MessageResult):
 
 
 class TimeoutError(Exception):
+
     """An exception used to notify a timeout error while
     consuming from a given queue"""
 
 
 class ExchangeType(type):
+
     """A metaclass to type exchanges.
     This allows us to declare exchanges just by setting class attributes.
     Exchanges can then be used without instancing the class.
@@ -273,6 +294,7 @@ class ExchangeType(type):
 
 
 class Exchange(object):
+
     """A generic exchange.
     This objects helps the creation of an exchange and its use among
     different programs, encapsulating the parameters. Since exchanges can be
@@ -292,6 +314,7 @@ class Exchange(object):
 
 
 class GenericProducer(object):
+
     """A generic class that represents a message producer.
     This class enables the user to implement build_message_*()
     and build_rpc_*() methods and automatically provides the respective
@@ -410,6 +433,7 @@ class GenericProducer(object):
         eks = self._get_eks(kwds)
         msg_props = self._build_message_properties()
 
+        # TODO: Why is this keyword not passed simply as named argument?
         callable_obj = kwds.pop('_callable')
         message = callable_obj(*args, **kwds)
         message.fingerprint(**self.fingerprint)
@@ -604,7 +628,8 @@ class GenericConsumer(object):
 
     # List of (Exchange, [(Queue, Key), (Queue, Key), ...])
     # Queue may be specified as string (the name of the queue) or
-    # as a dictionary {'name':queue_name, 'flags':{'flag1':True, 'flag2':False}}
+    # as a dictionary {'name':queue_name, 'flags':{'flag1':True,
+    # 'flag2':False}}
     eqk = []
 
     def __init__(self, eqk=[], hup=None, vhost=None):
@@ -642,9 +667,9 @@ class GenericConsumer(object):
             for queue_info, key in qk_list:
                 if isinstance(queue_info, collections.Mapping):
                     self.queue_bind(exchange_class,
-                        queue_info['name'],
-                        key,
-                        **queue_info['flags'])
+                                    queue_info['name'],
+                                    key,
+                                    **queue_info['flags'])
                 else:
                     self.queue_bind(exchange_class, queue_info, key)
 
@@ -654,13 +679,13 @@ class GenericConsumer(object):
                   format(name=self.__class__.__name__,
                          e=exchange_class))
         self.channel.exchange_declare(**exchange_class.parameters)
-        
+
         if debug_mode:
             print("Consumer {name}: Declaring queue {q}".
                   format(name=self.__class__.__name__,
                          q=queue))
         self.channel.queue_declare(queue=queue, **kwds)
-        
+
         if debug_mode:
             print("Consumer {name}: binding queue {q} with exchange {e} with routing key {k}".
                   format(name=self.__class__.__name__,
@@ -706,12 +731,14 @@ class GenericConsumer(object):
 
 
 class MessageHandler(object):
+
     """This decorator takes two parameters: message_type and message_name.
     message_type is the type of message the handler can process
     (e.g. "command", "status") message_name is the actual message name
     Decorating a method with this class marks it so that it is called every
     time a message with that type and name is received.
     """
+
     def __init__(self, message_type, message_name=None):
         self.handler_data = ("message", message_type, message_name, 'content')
 
@@ -721,24 +748,28 @@ class MessageHandler(object):
 
 
 class RpcHandler(MessageHandler):
+
     """This decorator takes two parameters: message_type and message_name.
     message_type is the type of message the handler can process
     (e.g. "command", "status") message_name is the actual message name
     Decorating a method with this class marks it so that it is called every
     time an RPC with that type and name is received.
     """
+
     def __init__(self, message_type, message_name=None):
         self.handler_data = ("rpc", message_type, message_name, 'content')
 
-    def __call__(self, func):
-        func._message_handler = self.handler_data
-        return func
+    # def __call__(self, func):
+    #     func._message_handler = self.handler_data
+    #     return func
 
 
 class MessageHandlerFullBody(MessageHandler):
+
     """This decorator behaves the same as MessageHandler but makes the
     decorated method receive the full message body instead the sole content.
     """
+
     def __init__(self, handler_type, message_name=None):
         self.handler_data = ("message", handler_type, message_name, None)
 
@@ -753,7 +784,45 @@ class Handler(object):
         self.call()
 
 
+class MessageFilter(object):
+
+    """This decorator takes as parameter a callable. The callable must accept
+    a message as argument and is executed every time a message is processed
+    by the decorated function.
+
+    The callable shall return the filtered message. Any exception will result
+    in the message being discarded without passing through the message handler.
+
+    Example:
+
+    def filter_message(message):
+        [...]
+
+    @messaging.MessageFilter(filter_message)
+    @messaging.MessageHandler('command', 'a_command')
+    def a_command(self, content):
+        [...]
+
+    When a message is processed by a_command() it is first processed by
+    filter_message().
+
+    """
+
+    def __init__(self, _callable, *args, **kwds):
+        self.callable = _callable
+        self.args = args
+        self.kwds = kwds
+
+    def __call__(self, func):
+        try:
+            func.filters.append((self.callable, self.args, self.kwds))
+        except AttributeError:
+            func.filters = [(self.callable, self.args, self.kwds)]
+        return func
+
+
 class MessageHandlerType(type):
+
     """This metaclass is used in conjunction with the MessageHandler decorator.
     An object with this metaclass has an internal dictionary called
     _message_handlers that contains all methods which can process an incoming
@@ -781,6 +850,7 @@ class MessageHandlerType(type):
 
 
 class MessageProcessor(microthreads.MicroThread):
+
     """A MessageProcessor is a MicroThread with MessageHandlerType as
     metaclass. This means that it can be used as a microthred in a scheduler
     and its methods can be decorated with the MessageHandler decorator.
@@ -821,6 +891,27 @@ class MessageProcessor(microthreads.MicroThread):
         executable = sys.executable
         os.execl(executable, executable, *sys.argv)
 
+    def _filter_message(self, callable_obj, message_body):
+        filtered_body = {}
+        filtered_body.update(message_body)
+
+        try:
+            for _filter, args, kwds in callable_obj.filters:
+                try:
+                    filtered_body = _filter(filtered_body, *args, **kwds)
+                except FilterError as exc:
+                    if debug_mode:
+                        print("Filter failure")
+                        print("  Filter:", _filter)
+                        print("  Args:  ", args)
+                        print("  Kwds:  ", kwds)
+                        print("  Filter message:", exc.args)
+                    raise
+        except AttributeError:
+            pass
+
+        return filtered_body
+
     def _msg_consumer(self, channel, method, header, body):
         decoded_body = self.consumer.decode(body)
 
@@ -840,30 +931,50 @@ class MessageProcessor(microthreads.MicroThread):
                                                        message_name), [])
 
                 for callable_obj, body_key in handlers:
+                    # Copies are made to avoid filters change the original
+                    # message that could be parsed by other handlers
                     if body_key is None:
-                        callable_obj(self, decoded_body)
+                        filtered_body = copy.deepcopy(decoded_body)
                     else:
-                        callable_obj(self, decoded_body[body_key])
+                        filtered_body = copy.deepcopy(decoded_body[body_key])
+
+                    try:
+                        filtered_body = self._filter_message(
+                            callable_obj, filtered_body)
+
+                        callable_obj(self, filtered_body)
+                    except FilterError:
+                        if debug_mode:
+                            print("Filter error in handler", callable_obj)
             elif message_category == 'rpc':
-                if message_type == 'command':
-                    message_name = decoded_body['name']
+                try:
+                    reply_func = functools.partial(
+                        self.consumer.rpc_reply, header)
 
-                    handlers = self._message_handlers.get((message_category,
-                                                           message_type,
-                                                           message_name), [])
+                    if message_type == 'command':
+                        message_name = decoded_body['name']
 
-                    if len(handlers) != 0:
-                        callable_obj, body_key = handlers[-1]
-                        reply_func = functools.partial(self.consumer.rpc_reply,
-                                                       header)
-                        try:
-                            callable_obj(self,
-                                         decoded_body['content'],
-                                         reply_func)
-                        except Exception as exc:
-                            result = MessageResultException(
-                                exc.__class__.__name__, exc.__str__())
-                            raise
+                        handlers = self._message_handlers.get((message_category,
+                                                               message_type,
+                                                               message_name), [])
+
+                        if len(handlers) != 0:
+                            callable_obj, body_key = handlers[-1]
+                            filtered_body = {}
+                            filtered_body.update(decoded_body['content'])
+
+                            try:
+                                filtered_body = self._filter_message(
+                                    callable_obj, filtered_body)
+                                callable_obj(self, filtered_body, reply_func)
+                            except FilterError:
+                                if debug_mode:
+                                    print(
+                                        "Filter error in handler", callable_obj)
+                except Exception as exc:
+                    reply_func(MessageResultException(
+                        exc.__class__.__name__, exc.__str__()))
+                    raise
 
             # Ack it since it has been processed - even if no handler
             # recognized it
