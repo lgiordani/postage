@@ -821,38 +821,6 @@ class MessageFilter(object):
         return func
 
 
-class MessageFormat(object):
-
-    """This decorator takes as parameter a message format, (see later) and
-    ensures that the incoming message respects that format. If not it raises
-    a FormatMismatch exception, otherwise the message is left untouched.
-
-    The simplest format is a list of keys. Every listed key shall be present
-    in the message body, but this latter can contain more keys.
-
-    ['a', 'b', 'c'] is the format
-    {'a':5, 'b':6, 'c':7} matches
-    {'a':5, 'b':6, 'c':7. 'd':8} matches
-    {'a':5, 'b':6} doesn't match
-
-    If a key is not a string it shall be a tuple or a list of a string
-    (the key) and a list of keys that shall be contained in the message
-    under that key.
-
-    ['a', 'b', ('c', ['d', 'e'])] is the format
-    {'a':5, 'b':6, 'c':{'d':7, 'e':8}} matches
-    {'a':5, 'b':6, 'c':{'d':7, 'e':8}, 'f':9} matches
-    {'a':5, 'b':6, 'c':{'e':8}, 'f':9} doesn't match
-    """
-
-    def __init__(self, _format):
-        self.format = _format
-
-    def __call__(self, func):
-        func._format = self.format
-        return func
-
-
 class MessageHandlerType(type):
 
     """This metaclass is used in conjunction with the MessageHandler decorator.
@@ -879,32 +847,6 @@ class MessageHandlerType(type):
                     cls._message_handlers[message_key] = []
 
                 cls._message_handlers[message_key].append((method, body_key))
-
-
-def check_message_format(message_body, *args, **kwds):
-    # A recursive function to check message format
-
-    # Messages are short, so Python 2 behaves well
-    # even if keys() does not return an iterator.
-    for key in args[0]:
-        # This happens if the key is a simple string
-        if not isinstance(key, collections.MutableSequence):
-            if not key in message_body.keys():
-                raise FilterError(
-                    "Expected format {} - incoming message is {}".format(
-                        args[0],
-                        message_body
-                    )
-                )
-            return message_body
-        else:
-            if not key[0] in message_body:
-                raise FilterError
-
-            # Recursive call
-            check_message_format(key[1], message_body[key[0]])
-
-            return message_body
 
 
 class MessageProcessor(microthreads.MicroThread):
