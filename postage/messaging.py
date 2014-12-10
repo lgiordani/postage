@@ -989,6 +989,8 @@ class MessageProcessor(microthreads.MicroThread):
                                                        message_name), [])
 
                 for callable_obj, body_key in handlers:
+                    # Copies are made to avoid filters change the original
+                    # message that could be parsed by other handlers
                     if body_key is None:
                         filtered_body = copy.deepcopy(decoded_body)
                     else:
