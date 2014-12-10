@@ -29,7 +29,7 @@ The current implementation is very simple and largely underused, due to the bloc
 
 # About versioning
 
-This is Postage version 1.0.2.
+This is Postage version 1.1.0.
 
 This library is versioned with a A.B.C schema ( **A**PI, **B**OOST, **C**OMPLAINT ).
 
@@ -511,6 +511,13 @@ The last available decorator is `MessageHandlerFullBody` that passes to the deco
 ### Default handlers
 
 `MessageProcessor` objects define two default message handlers to process incoming command `quit` and command `restart`. The first, as you can easily guess from the name, makes the component quit; actually it makes the consumer stop consuming messages and the microthread quit, so the program executes the code you put after the scheduler loop. If you put no code, the program just exits. The second command makes the component restart, i.e. it replaces itself with a new execution of the same program. This makes very easy to update running systems; just replace the code and send a `restart` to your components.
+
+### Message filters
+
+**New in version 1.1.0**
+The `MessageFilter` class may be used to decorate a message handler and accepts a callable as parameter. The provided callable is called on a copy of each incoming message that would be processed by that handler. Any exception raised by the callable results in the message being discarded without passing through the handler.
+
+You may use this feature to manage changes in the format of a message, and providing a filter that transforms old-style messages into new-style ones.
 
 ### Credits
 
