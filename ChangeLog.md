@@ -11,3 +11,7 @@ Change Log
 **Version 1.0.2**
 
 - Now EQKs may contain queue flags to toggle AMQP parameters such as `auto_delete` on specific queues
+
+**Version 1.1.0**
+
+- Added filters to alter/manage incoming messages before processing them
