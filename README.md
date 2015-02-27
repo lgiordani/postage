@@ -519,6 +519,35 @@ The `MessageFilter` class may be used to decorate a message handler and accepts 
 
 You may use this feature to manage changes in the format of a message, and providing a filter that transforms old-style messages into new-style ones.
 
+### GenericApplication
+
+**New in version 1.2.0**
+The `generic_application.py` module contains the `GenericApplication` class which is a basic unspecialized component based on `messaging.messageProcessor`. `GenericApplication` may be used to build message-driven programs in Python that interact through the RabbitMQ system.
+
+`GenericApplication` is a microthread that may use `MessageHandler` and derived classes to get messages from the RabbitMQ exchanges it connects to. The standard exchange used by this class is `generic_application.GenericApplicationExchange`. In the following paragraphs the names "system" and "network" both mean a given virtualhost on a set of clustered RabbitMQ nodes.
+
+A `GenericApplication` is identified by a `name`, an operating system `pid` and a running `host`. From those values three queues are defined inside each instance: `self.sid`, `self.hid` and `self.uid`.
+
+* `self.sid` is the system-wide queue, which is shared among all microthreads with the same `name`.
+* `self.hid` is the host-wide queue, which is shared by all microthreads with the same `name` and the same `host`.
+* `self.uid` is an unique queue on the whole system. Being linked to the OS PID and the running host this queue is owned by a single application instance.
+
+The `GenericApplication` class defines several routing keys through which the above queues are connected to the exchange, namely:
+
+* `{name}` is a fanout that delivers messages to every application with the given name. For example sending a message with the `monitor` key will reach all microthreads running with the `monitor` name.
+* `{name}/rr` delivers messages in round robin to every application with the given name. Round robin keys leverage the basic AMQP load balancing mechanism: the queue is shared among consumers and messages are fairly divided among them.
+* `@{host}` is a fanout to every application running on the same host.
+* `{name}@{host}` is a fanout to every application running on the same host and with the same name.
+* `{name}@{host}/rr` is the round robin version of the previous key. It balances message delivering to applications that share name and host.
+* `{pid}@{host}` delivers a message only the the unique application that has the given pid on the given host.
+
+A `GenericApplication` may join one or more groups. The list of groups can be specified when instancing the class or dynamically through a message. In the first case two keys are available to send messages
+
+* `{name}#{group}` which is a fanout to every application with the same name in the same group.
+* `{name}#{group}/rr` which is a round robin to the same set of applications.
+
+If the application joins a group later in its lifecyle, through a `join_group` message, only the fanout key is available. The technical reason for this limitation is described in the source code of the `msg_join_group()` message handler.
+
 ### Credits
 
 First of all I want to mention and thank the [Erlang](www.erlang.org) and [RabbitMQ](www.rabbitmq.com) teams and the maintainer of [pika](https://github.com/pika/pika), Gavin M. Roy, for their hard work, and for releasing such amazing pieces of software as open source.
