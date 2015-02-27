@@ -1,17 +1,6 @@
 import os
 import messaging
 
-class PresenceExchange(messaging.Exchange):
-
-    """The Presence exchange, used to send pings and autodiscover messages."""
-
-    name = "presence-exchange"
-    exchange_type = "direct"
-    passive = False
-    durable = True
-    auto_delete = False
-
-
 class GenericApplicationExchange(messaging.Exchange):
 
     """The GenericApplication exchange, used to send normal messages."""
@@ -37,7 +26,7 @@ class LoggingProducerStub(object):
         return self.stub
 
 
-class GenericApplicationConsumerMicroThread(messaging.MessageProcessor):
+class GenericApplication(messaging.MessageProcessor):
 
     # This is the standard exchange the application connects to
     exchange_class = GenericApplicationExchange
@@ -134,17 +123,7 @@ class GenericApplicationConsumerMicroThread(messaging.MessageProcessor):
             (self.uid, "{pid}@{host}".format(pid=pid, host=host))
         ]
 
-        eqk = [
-            (self.exchange_class, standard_qk_bindings),
-            # The PresenceExchange is linked with a general key and
-            # a host-wide key. Both are connected to the unique queue.
-            (PresenceExchange, [
-                (self.uid, 'presence'),
-                (self.uid, "presence@{host}".format(host=host))
-            ]),
-        ]
-
-        self.add_eqk(eqk)
+        self.add_eqk([(self.exchange_class, standard_qk_bindings)])
 
         for group in self.groups:
             # Fanout by app#group
