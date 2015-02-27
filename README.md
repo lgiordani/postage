@@ -504,7 +504,7 @@ you make the method `msg_quit()` process each incoming message which type is `co
 
 You can also decorate a method with the `@RpcHandler` decorator; in that case the method must accept two parameters, the first being the content of the received message, the second a reply function. The method has the responsibility of calling it passing a `MessageResult` or derived object. This mechanism allows the handler to do some cleanup after sending the reply.
 
-Message handlers can also be defined as classes inside a `MessageProcessor` and have to inherit from `Handler` and define a `call()` method which accepts only self; it can then access the `self.data` and `self.reply_func` attributes that contain the incoming message and the return function. The difference between the method and class version of the message handlers is that the class version can access the underlying `MessageProcessor` through its `self.processor` attribute. This is useful to access the fingerprint of the message or any other attribute that is included in the processor. A class is then in general richer thana simple method, thus giving more freedom to the programmer.
+Message handlers can also be defined as classes inside a `MessageProcessor` and have to inherit from `Handler` and define a `call()` method which accepts only self; it can then access the `self.data` and `self.reply_func` attributes that contain the incoming message and the return function. The difference between the method and class version of the message handlers is that the class version can access the underlying `MessageProcessor` through its `self.processor` attribute. This is useful to access the fingerprint of the message or any other attribute that is included in the processor. A class is then in general richer than a simple method, thus giving more freedom to the programmer.
 
 The last available decorator is `MessageHandlerFullBody` that passes to the decorated method or class the full body of the incoming message instead that only the value of the `content` key like `MessageHandler` and `RpcHandler` do.
 
@@ -518,6 +518,35 @@ The last available decorator is `MessageHandlerFullBody` that passes to the deco
 The `MessageFilter` class may be used to decorate a message handler and accepts a callable as parameter. The provided callable is called on a copy of each incoming message that would be processed by that handler. Any exception raised by the callable results in the message being discarded without passing through the handler.
 
 You may use this feature to manage changes in the format of a message, and providing a filter that transforms old-style messages into new-style ones.
+
+### GenericApplication
+
+**New in version 1.2.0**
+The `generic_application.py` module contains the `GenericApplication` class which is a basic unspecialized component based on `messaging.messageProcessor`. `GenericApplication` may be used to build message-driven programs in Python that interact through the RabbitMQ system.
+
+`GenericApplication` is a microthread that may use `MessageHandler` and derived classes to get messages from the RabbitMQ exchanges it connects to. The standard exchange used by this class is `generic_application.GenericApplicationExchange`. In the following paragraphs the names "system" and "network" both mean a given virtualhost on a set of clustered RabbitMQ nodes.
+
+A `GenericApplication` is identified by a `name`, an operating system `pid` and a running `host`. From those values three queues are defined inside each instance: `self.sid`, `self.hid` and `self.uid`.
+
+* `self.sid` is the system-wide queue, which is shared among all microthreads with the same `name`.
+* `self.hid` is the host-wide queue, which is shared by all microthreads with the same `name` and the same `host`.
+* `self.uid` is an unique queue on the whole system. Being linked to the OS PID and the running host this queue is owned by a single application instance.
+
+The `GenericApplication` class defines several routing keys through which the above queues are connected to the exchange, namely:
+
+* `{name}` is a fanout that delivers messages to every application with the given name. For example sending a message with the `monitor` key will reach all microthreads running with the `monitor` name.
+* `{name}/rr` delivers messages in round robin to every application with the given name. Round robin keys leverage the basic AMQP load balancing mechanism: the queue is shared among consumers and messages are fairly divided among them.
+* `@{host}` is a fanout to every application running on the same host.
+* `{name}@{host}` is a fanout to every application running on the same host and with the same name.
+* `{name}@{host}/rr` is the round robin version of the previous key. It balances message delivering to applications that share name and host.
+* `{pid}@{host}` delivers a message only the the unique application that has the given pid on the given host.
+
+A `GenericApplication` may join one or more groups. The list of groups can be specified when instancing the class or dynamically through a message. In the first case two keys are available to send messages
+
+* `{name}#{group}` which is a fanout to every application with the same name in the same group.
+* `{name}#{group}/rr` which is a round robin to the same set of applications.
+
+If the application joins a group later in its lifecyle, through a `join_group` message, only the fanout key is available. The technical reason for this limitation is described in the source code of the `msg_join_group()` message handler.
 
 ### Credits
 

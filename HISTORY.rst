@@ -22,3 +22,8 @@ History
 ++++++++++++++++++
 
 * Added filters to alter/manage incoming messages before processing them
+
+1.2.0 (2015-02-27)
+++++++++++++++++++
+
+* Added `generic_application.py` with the `GenericApplication` class
