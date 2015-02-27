@@ -27,3 +27,8 @@ History
 ++++++++++++++++++
 
 * Added `generic_application.py` with the `GenericApplication` class
+
+1.2.1 (2015-02-27)
+++++++++++++++++++
+
+* Fixed wrong indentation in `generic_application.py`

@@ -19,3 +19,7 @@ Change Log
 **Version 1.2.0**
 
 - Added `generic_application.py` with the `GenericApplication` class
+
+**Version 1.2.1**
+
+- Fixed wrong indentation in `generic_application.py`
