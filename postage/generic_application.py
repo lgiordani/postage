@@ -166,33 +166,34 @@ class GenericApplication(messaging.MessageProcessor):
             # Each application with the same name and belonging to the same
             # group subscribes this key with its unique queue
             self.logger.log(
-                "Joining group {name}#{group}".format(name=name, group=group)
-                self.consumer.queue_bind(
-                    self.exchange_class,
-                    self.uid,
-                    "{name}#{group}".format(name=name, group=group)
-                )
+                "Joining group {name}#{group}".format(name=name, group=group))
 
-                # !!!!!!!!!!!!!
-                # Round-robin on groups cannot be done: all components connect to
-                # the same queue. When you unbind it, you unbind the same queue.
-                # The first unbinds the queue, the second crashes.
-                # Moreover if the queue is new (as happens here) we shall
-                # issue basic_consume() (for each queue)
-                # and then start_consuming() (once): this means restarting.
+            self.consumer.queue_bind(
+                self.exchange_class,
+                self.uid,
+                "{name}#{group}".format(name=name, group=group)
+            )
 
-                @messaging.MessageHandler('command', 'leave_group')
-                def msg_leave_group(self, content):
-                group=content['parameters']['group_name']
-                name=self.fingerprint['name']
-                if group in self.groups:
-                self.groups.remove(group)
+            # !!!!!!!!!!!!!
+            # Round-robin on groups cannot be done: all components connect to
+            # the same queue. When you unbind it, you unbind the same queue.
+            # The first unbinds the queue, the second crashes.
+            # Moreover if the queue is new (as happens here) we shall
+            # issue basic_consume() (for each queue)
+            # and then start_consuming() (once): this means restarting.
 
-                self.logger.log(
-                    "Leaving group {name}#{group}".format(
-                        name=name, group=group)
-                    self.consumer.queue_unbind(
-                        self.exchange_class,
-                        self.uid,
-                        "{name}#{group}".format(name=name, group=group)
-                    )
+    @messaging.MessageHandler('command', 'leave_group')
+    def msg_leave_group(self, content):
+        group=content['parameters']['group_name']
+        name=self.fingerprint['name']
+        if group in self.groups:
+            self.groups.remove(group)
+
+            self.logger.log(
+                "Leaving group {name}#{group}".format(name=name, group=group))
+            
+            self.consumer.queue_unbind(
+                self.exchange_class,
+                self.uid,
+                "{name}#{group}".format(name=name, group=group)
+            )
