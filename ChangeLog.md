@@ -15,3 +15,7 @@ Change Log
 **Version 1.1.0**
 
 - Added filters to alter/manage incoming messages before processing them
+
+**Version 1.2.0**
+
+- Added `generic_application.py` with the `GenericApplication` class
