@@ -14,6 +14,13 @@ if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist bdist_wheel upload')
     sys.exit()
 
+# Conditionally include additional modules for docs
+# Grabbed from pika's setup.py
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+requirements = list()
+if on_rtd:
+    requirements.append('pika')
+
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
