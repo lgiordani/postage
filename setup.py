@@ -11,7 +11,7 @@ except ImportError:
     from distutils.core import setup
 
 if sys.argv[-1] == 'publish':
-    os.system('python setup.py sdist upload')
+    os.system('python setup.py sdist bdist_wheel upload')
     sys.exit()
 
 readme = open('README.rst').read()
@@ -19,7 +19,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='postage',
-    version='1.2.1',
+    version=postage.__version__,
     description='A Python library for AMQP-based network components',
     long_description=readme + '\n\n' + history,
     author='Leonardo Giordani',
@@ -30,16 +30,14 @@ setup(
     ],
     package_dir={'postage': 'postage'},
     include_package_data=True,
-    install_requires=[
-    ],
-    license="GPL v2.0 or newer",
+    install_requires=['pika'],
+    license="MPL v2.0",
     zip_safe=False,
-    keywords='postage',
+    keywords='amqp components',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License (GPL)',
-        'License :: OSI Approved :: Mozilla Public License 1.1 (MPL 1.1)',
+        'License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)',
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
