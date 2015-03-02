@@ -429,7 +429,7 @@ which will build a `MessageStatus` containing the `'online'` status string and w
 
 As you can see `GenericProducer` automatically defines a `message_name()` method that wraps each of the `build_message_name()` methods you defines. The same happens with RPC messages, where the `rpc_name()` method is automatically created to wrap `build_rpc_name()`.
 
-`message_*()` methods accept two special keyword arguments, namely **_key**, **_eks**, that change the way the message is sent. The behaviour of the two keywords follows the following algorithm:
+`message_*()` methods accept two special keyword arguments, namely **\_key**, **\_eks**, that change the way the message is sent. The behaviour of the two keywords follows the following algorithm:
 
 1. Calling `message_name()` sends the message with the predefined `eks`, i.e. those defined in the producer class. This means that the message is sent to each exchange listed in the `eks` list of the class, with the associated key.
 

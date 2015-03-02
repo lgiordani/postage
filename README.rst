@@ -672,7 +672,7 @@ messages, where the ``rpc_name()`` method is automatically created to
 wrap ``build_rpc_name()``.
 
 ``message_*()`` methods accept two special keyword arguments, namely
-***key\ **, ***\ eks**, that change the way the message is sent. The
+**\_key**, **\_eks**, that change the way the message is sent. The
 behaviour of the two keywords follows the following algorithm:
 
 1. Calling ``message_name()`` sends the message with the predefined
