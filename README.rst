@@ -617,7 +617,7 @@ need to define an exchange:
 .. code:: python
 
     class LoggingExchange(messaging.Exchange):
-        name = logging-exchange"
+        name = "logging-exchange"
         exchange_type = "direct"
         passive = False
         durable = True
@@ -696,8 +696,8 @@ RPC messages accept also ``_timeout`` (seconds), ``_max_retry`` and
 ``_queue_only`` to customize the behaviour of the producer when waiting
 for RPC answers (more on that later).
 
-Fingerprint
-~~~~~~~~~~~
+Initialize the fingerprint
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a ``GenericProducer`` is instanced a ``Fingerprint`` in its
 dictionary form can be passed as argument and this is included in each

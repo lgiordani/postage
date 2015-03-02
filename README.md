@@ -385,7 +385,7 @@ Let us see how `GenericProducer` solves these issues. First of all you need to d
 
 ``` python
 class LoggingExchange(messaging.Exchange):
-    name = logging-exchange"
+    name = "logging-exchange"
     exchange_type = "direct"
     passive = False
     durable = True
@@ -441,7 +441,7 @@ This system allows you to specify a default behaviour when writing the producer 
 
 RPC messages accept also `_timeout` (seconds), `_max_retry` and `_queue_only` to customize the behaviour of the producer when waiting for RPC answers (more on that later).
 
-### Fingerprint
+### Initialize the fingerprint
 
 When a `GenericProducer` is instanced a `Fingerprint` in its dictionary form can be passed as argument and this is included in each message object the producer sends. If not given, a bare fingerprint is created inside the object.
 
